@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {ToothVolume} from './volume.js?v=0.3.0';
-import {surfaceNets} from './mesher.js?v=0.3.0';
-import {makeToothMaterial} from './tooth-material.js?v=0.3.0';
-import {followPointer,isolationContour} from './interaction.js?v=0.3.0';
-import {installGlossary} from './learning-ui.js?v=0.3.0';
-import {installCoach} from './coach.js?v=0.3.0';
+import {ToothVolume} from './volume.js?v=0.3.1';
+import {surfaceNets} from './mesher.js?v=0.3.1';
+import {makeToothMaterial} from './tooth-material.js?v=0.3.1';
+import {followPointer,isolationContour} from './interaction.js?v=0.3.1';
+import {installGlossary} from './learning-ui.js?v=0.3.1';
+import {installCoach} from './coach.js?v=0.3.1';
 import {RoomEnvironment} from './vendor/RoomEnvironment.js';
 const $=id=>document.getElementById(id);
 const STORAGE='dentalab.caries.v1';
@@ -190,7 +190,7 @@ function updateOutputs(){for(const [id,unit,mult] of [['depth',' мм',1],['tilt
 async function init(){
  bind();
  try{
-  const results=await Promise.all([fetch('./assets/tooth-volume.json?v=0.3.0').then(r=>{if(!r.ok)throw Error('Метаданные модели недоступны');return r.json();}),fetch('./assets/tooth-volume.bin?v=0.3.0').then(r=>{if(!r.ok)throw Error('Объёмная модель недоступна');return r.arrayBuffer();}),fetch('./assets/tooth-reference.json').then(r=>r.json())]);
+  const results=await Promise.all([fetch('./assets/tooth-volume.json?v=0.3.1').then(r=>{if(!r.ok)throw Error('Метаданные модели недоступны');return r.json();}),fetch('./assets/tooth-volume.bin?v=0.3.1').then(r=>{if(!r.ok)throw Error('Объёмная модель недоступна');return r.arrayBuffer();}),fetch('./assets/tooth-reference.json').then(r=>r.json())]);
   meta=results[0];volume=new ToothVolume(meta,new Uint8Array(results[1]));
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.setClearColor(0x000000,0);renderer.localClippingEnabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
   $('viewport').appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','Трёхмерная модель рабочего зуба. Вращение правой кнопкой мыши.');renderer.domElement.setAttribute('role','img');
@@ -208,7 +208,7 @@ async function init(){
   const seal=new THREE.CatmullRomCurve3(contour.map(p=>new THREE.Vector3(...p)),true);cuff.add(new THREE.Mesh(new THREE.TubeGeometry(seal,segments,.065,8,true),new THREE.MeshStandardMaterial({color:0x537e68,roughness:.65})));cuff.visible=false;scene.add(cuff);
   toolGroup=new THREE.Group();head=new THREE.Mesh(new THREE.SphereGeometry(.65,20,14),new THREE.MeshStandardMaterial({color:0x9ba6a3,metalness:.75,roughness:.3}));toolGroup.add(head);shaft=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,5,16),new THREE.MeshStandardMaterial({color:0xc6d0c9,metalness:.8,roughness:.26}));shaft.position.y=3.2;toolGroup.add(shaft);
   const handle=new THREE.Mesh(new THREE.CylinderGeometry(.8,.45,5,24),new THREE.MeshStandardMaterial({color:0x75958d,metalness:.65,roughness:.32}));handle.position.y=7.9;handle.rotation.z=.08;toolGroup.add(handle);toolGroup.visible=false;scene.add(toolGroup);
-  worker=new Worker(new URL('./mesh-worker.js?v=0.3.0',import.meta.url),{type:'module'});worker.onmessage=({data:{mesh}})=>{tooth.geometry.dispose();tooth.geometry=geometry(mesh);if(mouthWork){mouthWork.geometry.dispose();mouthWork.geometry=tooth.geometry.clone();}busy=false;if(pending){pending=false;requestMesh();}};worker.onerror=e=>{busy=false;toast('Не удалось обновить геометрию. Перезагрузите страницу; прогресс сохранён.',true);console.error(e);};
+  worker=new Worker(new URL('./mesh-worker.js?v=0.3.1',import.meta.url),{type:'module'});worker.onmessage=({data:{mesh}})=>{tooth.geometry.dispose();tooth.geometry=geometry(mesh);if(mouthWork){mouthWork.geometry.dispose();mouthWork.geometry=tooth.geometry.clone();}busy=false;if(pending){pending=false;requestMesh();}};worker.onerror=e=>{busy=false;toast('Не удалось обновить геометрию. Перезагрузите страницу; прогресс сохранён.',true);console.error(e);};
   renderer.domElement.addEventListener('pointermove',movePointer);renderer.domElement.addEventListener('pointerdown',beginStroke);renderer.domElement.addEventListener('pointerleave',()=>{pointerInside=false;previous=null;stopStroke();toolGroup.visible=false;});renderer.domElement.addEventListener('pointercancel',stopStroke);renderer.domElement.addEventListener('lostpointercapture',()=>{if(pressing)stopStroke();});renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
   renderer.domElement.addEventListener('wheel',e=>{if(e.shiftKey&&view==='tooth'){e.preventDefault();e.stopImmediatePropagation();$('depth').value=+$('depth').value+(e.deltaY>0?.1:-.1);updateOutputs();updateInstrument();}},{passive:false,capture:true});
   const resize=()=>{const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('viewport'));resize();
