@@ -1,6 +1,9 @@
 const teeth='<path d="M131 43c-17-15-38-5-34 14 3 18 3 48 13 49 10 0 8-30 18-30s9 30 18 30c11-1 9-30 13-49 4-19-13-29-28-14Z" fill="#f1e9cc" stroke="#9d987d" stroke-width="2"/>';
 function diagram(kind){let body='';
- if(kind==='dam')body='<rect x="34" y="17" width="190" height="99" rx="12" fill="none" stroke="#849b91" stroke-width="4"/><path d="M43 25h172v83H43z" fill="#84b5a2"/>'+teeth+'<path d="M94 63q34 14 68 0" fill="none" stroke="#267860" stroke-width="4"/><text x="46" y="43">платок</text><text x="176" y="104">рамка</text>';
+ if(kind==='bur'||kind==='fissure'||kind==='polish')body='<path d="m99 24 40 8-16 38-20-7z" fill="#819c94" stroke="#57746b" stroke-width="2"/><path d="m113 66-14 39" stroke="#98aaa9" stroke-width="5"/>'+(kind==='fissure'?'<path d="m94 96 8 3-6 15-8-3z" fill="#8b999b"/>':`<ellipse cx="96" cy="110" rx="${kind==='polish'?9:7}" ry="7" fill="${kind==='polish'?'#c29eab':'#8d9e9e'}"/>`);
+ else if(kind==='mirror')body='<ellipse cx="130" cy="43" rx="25" ry="20" fill="#d4e8e5" stroke="#869fa0" stroke-width="4"/><path d="m122 62-28 50" stroke="#879c96" stroke-width="8"/>';
+ else if(kind==='paste')body='<path d="m130 20-25 70" stroke="#598b7e" stroke-width="13"/><path d="m105 90-8 19 15 7" fill="none" stroke="#95a5a1" stroke-width="4"/><circle cx="119" cy="115" r="7" fill="#d8c7a2"/>';
+ else if(kind==='dam')body='<rect x="34" y="17" width="190" height="99" rx="12" fill="none" stroke="#849b91" stroke-width="4"/><path d="M43 25h172v83H43z" fill="#84b5a2"/>'+teeth+'<path d="M94 63q34 14 68 0" fill="none" stroke="#267860" stroke-width="4"/><text x="46" y="43">платок</text><text x="176" y="104">рамка</text>';
  else if(kind==='clamp')body='<path d="M77 65c-27-70 130-70 104 0" fill="none" stroke="#82939b" stroke-width="9"/><path d="m77 63 28 15-20 13-18-17zm104 0-28 15 20 13 18-17z" fill="#b6c1c6" stroke="#657b88" stroke-width="2"/><circle cx="78" cy="55" r="4" fill="#eef5f0"/><circle cx="180" cy="55" r="4" fill="#eef5f0"/><text x="116" y="35">дуга</text><text x="97" y="108">щёчки клампа</text>';
  else if(kind==='floss')body='<path d="M37 72q44-70 89 0t92-5" fill="none" stroke="#6faaa1" stroke-width="3"/>'+teeth+'<path d="m83 52 92 11" stroke="#f9ffff" stroke-width="3"/><text x="38" y="111">тонкая прочная нить</text>';
  else if(kind==='lamp')body='<path d="m62 94 24-54 44 4 31 30" fill="none" stroke="#5e8290" stroke-width="15"/><path d="m150 77 29-8-2 28z" fill="#8cbfe9" opacity=".6"/><rect x="180" y="60" width="25" height="38" rx="7" fill="#e9dfc2"/><text x="130" y="115">световод</text>';
@@ -8,6 +11,12 @@ function diagram(kind){let body='';
  return `<svg viewBox="0 0 258 130" role="img" aria-label="Схематическое изображение" xmlns="http://www.w3.org/2000/svg"><rect width="258" height="130" rx="10" fill="#eef5ee"/><g font-family="sans-serif" font-size="10" fill="#536f60">${body}</g></svg>`;
 }
 export const TERMS={
+ tool_inspect:{title:'Осмотр',kind:'mirror',description:'Зеркало помогает осматривать поверхности зуба. В тренажёре режим осмотра позволяет вращать модель без изменения тканей.'},
+ tool_round:{title:'Шаровидный бор',kind:'bur',description:'Сферическая рабочая часть удаляет ткань в зоне контакта. В тренажёре подходит для освоения локального препарирования и контроля глубины.'},
+ tool_fissure:{title:'Фиссурный бор',kind:'fissure',description:'Цилиндрическая рабочая часть формирует полость и её стенки. Наклон и поворот меняют участок контакта с тканями.'},
+ tool_composite:{title:'Внесение композита',kind:'paste',description:'Аппликатор добавляет реставрационный материал в подготовленный дефект. Интактные ткани при этом не заменяются.'},
+ tool_light:{title:'Полимеризационная лампа',kind:'lamp',description:'Направляет свет на световой композит для его полимеризации. Подведите световод к материалу и удерживайте его устойчиво.'},
+ tool_polish:{title:'Финирование',kind:'polish',description:'Рабочая часть корректирует поверхность внесённого реставрационного материала. В тренажёре не удаляет собственные ткани зуба.'},
  dam:{title:'Коффердам',kind:'dam',description:'Тонкий латексный или безлатексный платок, который изолирует рабочее поле от слюны. Его натягивают на рамку, а зуб выводят через отверстие.'},
  clamp:{title:'Кламп',kind:'clamp',description:'Металлический зажим с дугой и двумя щёчками. Удерживает коффердам на зубе; перед установкой к нему крепят страховочную нить.'},
  floss:{title:'Флосс',kind:'floss',description:'Зубная нить. Помогает проводить коффердам через межзубные контакты и проверять контактные пункты реставрации.'},
