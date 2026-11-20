@@ -68,7 +68,7 @@ export class ToothVolume {
     return {schema:1,modelVersion:this.meta.version,grid:this.meta.size,step:this.meta.step,changes,metrics:{...this.metrics},extra,savedAt:new Date().toISOString()};
   }
   restore(save){
-    if(save?.schema!==1||save.modelVersion!==this.meta.version||JSON.stringify(save.grid)!==JSON.stringify(this.meta.size)||save.step!==this.meta.step||!Array.isArray(save.changes)||save.changes.length>this.data.length)throw Error('Файл относится к другой версии модели.');
+    if(save?.schema!==1||!(save.modelVersion===this.meta.version||(save.modelVersion===1&&this.meta.version===2))||JSON.stringify(save.grid)!==JSON.stringify(this.meta.size)||save.step!==this.meta.step||!Array.isArray(save.changes)||save.changes.length>this.data.length)throw Error('Файл относится к другой версии модели.');
     const next=this.base.slice();const seen=new Set();
     for(const pair of save.changes){if(!Array.isArray(pair)||pair.length!==2)throw Error('Повреждённый файл.');const [i,v]=pair;
       if(!Number.isInteger(i)||i<0||i>=next.length||!Number.isInteger(v)||v<0||v>6||seen.has(i))throw Error('Недопустимые данные модели.');

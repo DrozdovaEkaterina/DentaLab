@@ -41,6 +41,24 @@ for (ix,iz),ys in columns.items():
  for iy in range(ny):
   y=lo[1]+iy*step
   if sum(q>y for q in ys)%2:base[ix+nx*(iy+ny*iz)]=2
+# Preserve the supplied crown and reconstruct two smoothly tapering roots.
+# The source has a fused coarse root stump; no patient-specific root anatomy is implied.
+for iz in range(nz):
+ for iy in range(ny):
+  y=lo[1]+iy*step
+  if y>=-.7:continue
+  t=(-y-.7)/11.0
+  for ix in range(nx):
+   x,z=lo[0]+ix*step,lo[2]+iz*step
+   solid=False
+   collar=max(0,1-(-y-.7)/1.9)
+   if collar>0 and (x/(4.2*collar**.7))**2+(z/(6.0*collar**.7))**2<1:solid=True
+   if 0<=t<1:
+    for sign in (-1,1):
+     rz=2.65*(1-t)**.65+.10;rx=2.7*(1-t)**.75+.12
+     root_z=sign*(2.3+2.2*t+.3*math.sin(math.pi*t));root_x=sign*(.25+.5*t)
+     if ((x-root_x)/rx)**2+((z-root_z)/rz)**2<1:solid=True
+   base[ix+nx*(iy+ny*iz)]=2 if solid else 0
 # Morphological surface distance: a teaching reconstruction, not patient anatomy.
 for iz in range(1,nz-1):
  for iy in range(1,ny-1):
@@ -53,9 +71,14 @@ for iz in range(1,nz-1):
     for dx,dy,dz in offsets:
      xx,yy,zz=ix+dx,iy+dy,iz+dz
      if not (0<=xx<nx and 0<=yy<ny and 0<=zz<nz) or not base[xx+nx*(yy+ny*zz)]:base[i]=1;break
-   pulp=(x/1.65)**2+((y+1.1)/3.7)**2+(z/2.1)**2<1
+   pulp=y>=-.7 and (x/1.65)**2+((y+1.1)/3.7)**2+(z/2.1)**2<1
    # Root canals are schematic and deliberately labelled as reconstructed.
-   canals=y<-2 and ((x-.7)/.55)**2+((z-2.8)/.7)**2<1 or y<-2 and ((x+.7)/.55)**2+((z+2.8)/.7)**2<1
+   canals=False
+   if y<-.7:
+    t=max(0,min(.999,(-y-.7)/11.0));cr=.32*(1-t)**.5+.08
+    for sign in (-1,1):
+     root_z=sign*(2.3+2.2*t+.3*math.sin(math.pi*t));root_x=sign*(.25+.5*t)
+     if ((x-root_x)/cr)**2+((z-root_z)/cr)**2<1:canals=True
    if pulp or canals:base[i]=4
 central=[h for (ix,iz),h in tops.items() if abs(lo[0]+ix*step)<.65 and abs(lo[2]+iz*step)<.65]
 ctop=sum(central)/len(central);cy=ctop-1.0
@@ -68,7 +91,7 @@ for iz in range(nz):
    lesion=((x+.15)/1.8)**2+((y-cy)/1.9)**2+(z/1.65)**2<1
    neck=(x+.15)**2+z*z<.7**2 and y>cy and y<ctop+1.5
    if lesion or neck:base[i]=3
-meta={'version':1,'size':size,'origin':lo,'step':step,'top':ctop,'lesionCenter':[-.15,cy,0],'sourceComponent':6592,'sourceScale':scale,'sourceCenter':[cx,top,cz],'units':'mm, approximate normalized scale','anatomy':'Reconstructed teaching layers; not a scan of internal tissues','counts':dict(collections.Counter(base))}
+meta={'version':2,'size':size,'origin':lo,'step':step,'top':ctop,'lesionCenter':[-.15,cy,0],'sourceComponent':6592,'sourceScale':scale,'sourceCenter':[cx,top,cz],'units':'mm, approximate normalized scale','anatomy':'Reconstructed teaching layers; not a scan of internal tissues','counts':dict(collections.Counter(base))}
 (ROOT/'assets/tooth-volume.json').write_text(json.dumps(meta,indent=2));(ROOT/'assets/tooth-volume.bin').write_bytes(base)
 (ROOT/'assets/tooth-reference.json').write_text(json.dumps({'vertices':vertices,'faces':faces,'sourceVertices':component}))
 print(json.dumps(meta,indent=2))

@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "size": [
     49,
     76,
@@ -27,10 +27,10 @@
   "units": "mm, approximate normalized scale",
   "anatomy": "Reconstructed teaching layers; not a scan of internal tissues",
   "counts": {
-    "0": 196045,
-    "2": 44630,
-    "1": 10694,
-    "4": 4389,
+    "0": 215794,
+    "2": 26424,
+    "1": 11736,
+    "4": 1804,
     "3": 1198
   }
 }
