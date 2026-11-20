@@ -13,3 +13,9 @@ export function isolationContour(data,meta,y=-.65,segments=128){
  // Smooth sampling stair steps, retaining a slight overlap for a continuous seal.
  return points.map((p,i)=>{const a=points[(i+segments-1)%segments],b=points[(i+1)%segments];return [p[0]*.6+(a[0]+b[0])*.2,y,p[2]*.6+(a[2]+b[2])*.2];});
 }
+// Yaw around world Y, followed by tilt around the tool's local X.
+// This keeps rotation visible at zero tilt and aligns the working axis with contact physics.
+export function instrumentQuaternion(tiltDegrees,yawDegrees){
+ const t=-tiltDegrees*Math.PI/360,y=yawDegrees*Math.PI/360;
+ return [Math.sin(t)*Math.cos(y),Math.cos(t)*Math.sin(y),-Math.sin(t)*Math.sin(y),Math.cos(t)*Math.cos(y)];
+}

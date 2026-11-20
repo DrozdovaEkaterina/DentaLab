@@ -1,13 +1,14 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {ToothVolume} from './volume.js?v=0.4.0';
-import {surfaceNets} from './mesher.js?v=0.4.0';
-import {makeToothMaterial} from './tooth-material.js?v=0.4.0';
-import {CASES,caseViewPolicy} from './case-config.js?v=0.4.0';
-import {followPointer,isolationContour} from './interaction.js?v=0.4.0';
-import {installGlossary} from './learning-ui.js?v=0.4.0';
-import {installCoach} from './coach.js?v=0.4.0';
+import {ToothVolume} from './volume.js?v=0.5.0';
+import {surfaceNets} from './mesher.js?v=0.5.0';
+import {makeToothMaterial} from './tooth-material.js?v=0.5.0';
+import {planEarlyExcavation} from './early-coach.js?v=0.5.0';
+import {CASES,caseViewPolicy} from './case-config.js?v=0.5.0';
+import {followPointer,isolationContour,instrumentQuaternion} from './interaction.js?v=0.5.0';
+import {installGlossary} from './learning-ui.js?v=0.5.0';
+import {installCoach} from './coach.js?v=0.5.0';
 import {RoomEnvironment} from './vendor/RoomEnvironment.js';
 const $=id=>document.getElementById(id);
 const STORAGE='dentalab.caries.v1';
@@ -25,12 +26,13 @@ const descriptions=[['Обследование','Изучите карту па�
 let volume,meta,renderer,scene,camera,controls,tooth,reference,toolGroup,head,shaft,lesionMesh,pulpMesh,fullMouth,mouthHighlight,mouthWork,fullOriginalTooth;
 let stage=0,diagnosed=false,isolated=false,tool='inspect',powered=false,view='tooth',mode='learn',showRoots=true,section=false,showLesion=false;
 let cursor=null,previous=null,pressing=false,pointerInside=false,worker,busy=false,pending=false,meshRevision=0,history=[],timer,lastTick=0,saveTimer,dirty=false,lightTime=0,statsCache,lastStats=0,lastGate='';
+let earlyPlan=null,earlySignature='';
 let toolPoseReady=false,activeCaseId=1,mouthLoading=false;
 let isReady=false,tiltLocked=false,yawLocked=false,guideEnabled=true;
 const axis=new THREE.Vector3(0,-1,0),ray=new THREE.Raycaster(),mouse=new THREE.Vector2(),normal=new THREE.Vector3(0,1,0);
 const clips={crown:new THREE.Plane(new THREE.Vector3(0,1,0),.55),section:new THREE.Plane(new THREE.Vector3(0,0,-1),0)};
 const annotate=installGlossary();
-const coach=installCoach({state:()=>({stage,mode,view,enabled:guideEnabled,ready:isReady&&activeCaseId===1,critical:statsCache?.critical===true}),annotate,onToggle:enabled=>{if(mode==='exam'){toast('В самостоятельной практике стрелки и подсказки скрыты.');return;}guideEnabled=enabled;coach.update();markDirty();toast(enabled?'Подсказки включены: стрелки показывают цель текущего шага.':'Подсказки выключены: стрелки скрыты, состояние зуба и этап сохраняются.');},locate:kind=>{if(!camera||!meta)return null;const v=new THREE.Vector3(...(kind==='neck'?[3.6,-.65,0]:[meta.lesionCenter[0],meta.top-.2,meta.lesionCenter[2]]));v.project(camera);const r=$('viewport').getBoundingClientRect();return {x:r.left+(v.x*.5+.5)*r.width,y:r.top+(-v.y*.5+.5)*r.height,visible:v.z>-1&&v.z<1&&Math.abs(v.x)<1&&Math.abs(v.y)<1};}});
+const coach=installCoach({state:()=>({stage,mode,view,enabled:guideEnabled,ready:isReady&&activeCaseId===1,early:activeCaseId===1&&stage===2?earlyPlan:null,critical:statsCache?.critical===true}),annotate,onToggle:enabled=>{if(mode==='exam'){toast('В самостоятельной практике стрелки и подсказки скрыты.');return;}guideEnabled=enabled;coach.update();markDirty();toast(enabled?'Подсказки включены: стрелки показывают цель текущего шага.':'Подсказки выключены: стрелки скрыты, состояние зуба и этап сохраняются.');},locate:kind=>{if(!camera||!meta)return null;const v=new THREE.Vector3(...(kind==='early'&&earlyPlan?.point?earlyPlan.point:kind==='neck'?[3.6,-.65,0]:[meta.lesionCenter[0],meta.top-.2,meta.lesionCenter[2]]));v.project(camera);const r=$('viewport').getBoundingClientRect();return {x:r.left+(v.x*.5+.5)*r.width,y:r.top+(-v.y*.5+.5)*r.height,visible:v.z>-1&&v.z<1&&Math.abs(v.x)<1&&Math.abs(v.y)<1};}});
 function toast(text,error=false){$('toast').textContent=text;$('toast').classList.toggle('error',error);$('toast').hidden=false;clearTimeout(timer);timer=setTimeout(()=>$('toast').hidden=true,4500);}
 function modal(html){$('modal-content').innerHTML=html;annotate($('modal-content'));if(!$('modal').open)$('modal').showModal();setPower(false);stopStroke();}
 function sourceList(){return SOURCES.map(s=>`<div class="source-card"><a href="${s.url}" target="_blank" rel="noopener noreferrer">${s.title}</a><p>${s.scope}</p></div>`).join('');}
@@ -61,7 +63,7 @@ function renderStage(){
  $('begin-restore')?.addEventListener('click',()=>{setStage(3);selectTool('composite');});
  $('begin-control')?.addEventListener('click',()=>{setStage(4);selectTool('inspect');});$('open-report')?.addEventListener('click',report);
  if(mode==='exam'&&stage===2){$('remaining-label').textContent='Скрыт';$('remaining-bar').style.width='0%';}
- updateHint();
+ updateHint();if(volume)updateEarlyPractice();
 }
 function setStage(n){stopStroke();setPower(false);stage=n;renderStage();markDirty();}
 function setPower(value){powered=!!value&&tool!=='inspect'&&view==='tooth';$('power-button').classList.toggle('on',powered);$('power-button').setAttribute('aria-pressed',String(powered));$('power-button').querySelector('span:nth-child(2)').textContent=powered?'Инструмент включён':'Включить инструмент';$('power-status').textContent=powered?'Включён':'Выключен';$('power-status').className=powered?'good':'';if(!powered){previous=null;lightTime=0;}if(tool!=='inspect'&&view==='tooth')$('hover-info').textContent=`${names[tool]} · ${powered?'включён':'выключен'} · подача ${(+$('depth').value).toFixed(1)} мм`;updateInstrument();}
@@ -96,11 +98,11 @@ function explainParameter(id){let text='';
  if(id==='tilt'||id==='yaw'){const locked=id==='tilt'?tiltLocked:yawLocked;const label=id==='tilt'?'Наклон':'Поворот';text=locked?`${label} зафиксирован: мышь больше не меняет этот параметр. Значение можно точно настроить ползунком.`:`${label} разблокирован: параметр снова следует за положением мыши на зубе.`;}
  $('parameter-effect').textContent=text;$('parameter-effect').hidden=!text;if(text)toast(text,id==='cooling'&&!$('cooling').checked);
 }
-function updateInstrument(){if(!toolGroup)return;
+function updateInstrument({rotate=false}={}){if(!toolGroup)return;
  toolGroup.visible=view==='tooth'&&tool!=='inspect'&&!$('modal').open;
  const tilt=+$('tilt').value*Math.PI/180,yaw=+$('yaw').value*Math.PI/180;
  axis.set(Math.sin(tilt)*Math.sin(yaw),-Math.cos(tilt),Math.sin(tilt)*Math.cos(yaw));
- if(powered&&cursor){toolGroup.position.copy(cursor).addScaledVector(axis,+$('depth').value);toolGroup.quaternion.setFromUnitVectors(normal,axis.clone().negate());toolPoseReady=true;}else if(!toolPoseReady){toolGroup.position.set(7,6,3);toolGroup.quaternion.identity();toolPoseReady=true;}
+ if(!toolPoseReady){toolGroup.position.set(5.8,1.5,2.2);toolPoseReady=true;rotate=true;}if(powered&&cursor)toolGroup.position.copy(cursor).addScaledVector(axis,+$('depth').value);if(powered||rotate)toolGroup.quaternion.fromArray(instrumentQuaternion(+$('tilt').value,+$('yaw').value));
  const radius=+$('radius').value;
  head.visible=true;if(head.userData.shape!==`${tool}:${radius}`){head.geometry.dispose();head.geometry=tool==='fissure'?new THREE.CylinderGeometry(radius,radius,1.8,20):new THREE.SphereGeometry(tool==='light'?1.1:radius,20,14);head.userData.shape=`${tool}:${radius}`;}
  head.position.y=tool==='fissure'?.9:0;
@@ -154,7 +156,19 @@ function work(dt){if(!pressing||!powered||!cursor||!pointerInside||view!=='tooth
  if(n){requestMesh();markDirty();if(volume.metrics.pulpRemoved>before){toast('Контакт с пульпой. Остановите обработку и разберите результат.',true);setPower(false);stopStroke();} }
 }
 function undo(){if(!history.length)return;stopStroke();setPower(false);const h=history.pop();volume.data.set(h.data);volume.metrics={...h.metrics};$('undo-button').disabled=!history.length;requestMesh();updateStats();markDirty();toast('Последнее действие отменено.');}
-function updateStats(){if(!volume)return;statsCache=volume.stats();const s=statsCache;$('removed-volume').innerHTML=`${s.removedVolume.toFixed(1)} <small>мм³</small>`;$('healthy-volume').innerHTML=`${s.healthyVolume.toFixed(1)} <small>мм³</small>`;$('healthy-volume').classList.toggle('bad',s.healthyVolume>3||s.critical);
+function updateEarlyPractice(){
+ const visible=activeCaseId===1&&stage===2&&mode==='learn';
+ earlyPlan=visible?planEarlyExcavation(volume,+$('radius').value):null;
+ const box=$('early-practice');box.hidden=!earlyPlan;
+ const signature=JSON.stringify(earlyPlan);if(signature===earlySignature)return;earlySignature=signature;
+ if(!earlyPlan){box.innerHTML='';return;}
+ const p=earlyPlan;
+ if(p.status!=='work'){box.innerHTML=`<h3>${p.title}</h3><p>${p.reason}</p><button id="early-look">${p.status==='stop'?'Открыть разбор':'Посмотреть сверху'}</button>`;$('early-look').onclick=()=>{stopStroke();setPower(false);if(p.status==='stop')report();else resetCamera(true);};return;}
+ box.innerHTML=`<div class="early-heading"><strong>Первые 10 мм³</strong><span>${p.removed.toFixed(1)} / 10 мм³</span></div><div class="progress-track"><div style="width:${Math.min(100,p.removed*10)}%"></div></div><p><b>Обзор.</b> Посмотрите сверху; для стенки слегка поверните модель ПКМ.</p><p><b>Наклон и поворот.</b> Для отмеченной точки: ${p.tilt}° / ${p.yaw}°. Фиксация осей помогает удерживать направление.</p><p><b>Подача.</b> Ориентир ${p.depth.toFixed(1)} мм от исходной поверхности. После короткого прохода осмотрите полость; прибавляйте по 0,1 мм, пока видимая поражённая ткань остаётся под рабочей частью. При 0 мм центр рабочей части находится на исходной поверхности, а её нижняя часть уже касается ткани.</p><p>${p.reason} У пульпы остановитесь и пересмотрите обработку.</p><div class="early-actions"><button id="early-look">Посмотреть сверху</button><button id="early-settings">Выставить углы и подачу</button></div><small>Ориентиры рассчитаны для точки на 3D-модели; 10 мм³ — этап обучения.</small>`;
+ $('early-look').onclick=()=>{stopStroke();setPower(false);resetCamera(true);guideEnabled=true;coach.goTo(1);markDirty();};
+ $('early-settings').onclick=()=>{stopStroke();setPower(false);selectTool('round');tiltLocked=true;yawLocked=true;$('tilt').value=p.tilt;$('yaw').value=p.yaw;$('depth').value=p.depth;syncLocks();updateOutputs();updateInstrument({rotate:true});guideEnabled=true;coach.goTo(1);markDirty();toast('Углы и подача выставлены. Наведите бор на отмеченную точку и включите его для прохода.');};annotate(box);
+}
+function updateStats(){if(!volume)return;statsCache=volume.stats();updateEarlyPractice();const s=statsCache;$('removed-volume').innerHTML=`${s.removedVolume.toFixed(1)} <small>мм³</small>`;$('healthy-volume').innerHTML=`${s.healthyVolume.toFixed(1)} <small>мм³</small>`;$('healthy-volume').classList.toggle('bad',s.healthyVolume>3||s.critical);
  if($('remaining-label'))$('remaining-label').textContent=mode==='exam'?'Скрыт':`${s.remainingPercent.toFixed(0)}%`;
  if($('remaining-bar'))$('remaining-bar').style.width=mode==='exam'?'0%':`${s.remainingPercent}%`;updateHint();
 }
@@ -189,14 +203,14 @@ function bind(){
  $('modal').addEventListener('close',updateInstrument);$('sources-button').onclick=sources;$('hint-source').onclick=sources;$('help-button').onclick=help;$('cases-button').onclick=cases;$('patient-button').onclick=patient;$('data-button').onclick=dataPanel;$('finish-button').onclick=report;$('start-over').onclick=()=>activeCaseId===1?confirmRestart():openCase(1);
  document.querySelectorAll('[data-stage]').forEach(b=>b.onclick=()=>setStage(+b.dataset.stage));document.querySelectorAll('[data-tool]').forEach(b=>b.onclick=()=>selectTool(b.dataset.tool));document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>{if(isReady)setView(b.dataset.view);});
  $('mode').onchange=e=>{mode=e.target.value;stopStroke();setPower(false);applyMode();updateStats();markDirty();toast(mode==='exam'?'Самостоятельная практика: стрелки, разрез, подсветка поражения и текущий процент скрыты. Прогресс сохраняется.':'Обучение: доступны пояснения, стрелки и вспомогательные виды. Прогресс сохраняется.');};$('power-button').onclick=()=>{setPower(!powered);explainParameter('power');};
- for(const [id,read,write] of [['tilt',()=>tiltLocked,v=>tiltLocked=v],['yaw',()=>yawLocked,v=>yawLocked=v]])$('lock-'+id).onclick=()=>{stopStroke();write(!read());syncLocks();autoAim();updateInstrument();explainParameter(id);markDirty();};
- for(const id of ['depth','tilt','yaw','radius'])$(id).addEventListener('input',()=>{updateOutputs();updateInstrument();if(id==='tilt'||id==='yaw')markDirty();});$('cooling').onchange=()=>{updateHint();explainParameter('cooling');};
+ for(const [id,read,write] of [['tilt',()=>tiltLocked,v=>tiltLocked=v],['yaw',()=>yawLocked,v=>yawLocked=v]])$('lock-'+id).onclick=()=>{stopStroke();write(!read());syncLocks();autoAim();updateInstrument({rotate:true});explainParameter(id);markDirty();};
+ for(const id of ['depth','tilt','yaw','radius'])$(id).addEventListener('input',()=>{updateOutputs();updateInstrument({rotate:id==='tilt'||id==='yaw'});if(id==='tilt'||id==='yaw')markDirty();});$('cooling').onchange=()=>{updateHint();explainParameter('cooling');};
  $('reset-view').onclick=()=>resetCamera();$('top-view').onclick=()=>resetCamera(true);$('camera-up').onclick=()=>raiseCamera(1);$('camera-down').onclick=()=>raiseCamera(-1);$('undo-button').onclick=undo;
  $('roots-button').onclick=()=>{showRoots=!showRoots;$('roots-button').classList.toggle('active',showRoots);$('roots-button').setAttribute('aria-pressed',String(showRoots));updateClip();resetCamera();if(view==='tooth')$('scene-title').childNodes[0].textContent=showRoots?'Коронка и корни моляра':'Коронка моляра';explainParameter('roots');};
  $('section-button').onclick=()=>{if(mode==='exam'){toast('Разрез недоступен в самостоятельной практике.');return;}stopStroke();setPower(false);section=!section;$('section-button').classList.toggle('active',section);updateClip();explainParameter('section');};
  $('lesion-button').onclick=()=>{if(mode==='exam'){toast('Подсветка недоступна в самостоятельной практике.');return;}showLesion=!showLesion;$('lesion-button').classList.toggle('active',showLesion);updateClip();explainParameter('lesion');};
  window.addEventListener('keydown',e=>{if(e.target.matches('input,textarea,select')||$('modal').open)return;if((e.metaKey||e.ctrlKey)&&e.code==='KeyZ'){e.preventDefault();undo();return;}if(e.code==='Space'){e.preventDefault();if(!e.repeat){setPower(!powered);explainParameter('power');}}const keys=['Digit1','Digit2','Digit3','Digit4','Digit5','Digit6'];if(keys.includes(e.code))selectTool(Object.keys(names)[keys.indexOf(e.code)]);
-  if(['KeyW','KeyS','KeyA','KeyD'].includes(e.code)){e.preventDefault();const input=['KeyW','KeyS'].includes(e.code)?$('depth'):$('tilt');const direction=['KeyW','KeyD'].includes(e.code)?1:-1;if(input===$('tilt')&&!tiltLocked){toast('Сначала зафиксируйте наклон для ручной настройки.');return;}input.value=+input.value+direction*(input===$('depth')?.1:5);updateOutputs();updateInstrument();}
+  if(['KeyW','KeyS','KeyA','KeyD'].includes(e.code)){e.preventDefault();const input=['KeyW','KeyS'].includes(e.code)?$('depth'):$('tilt');const direction=['KeyW','KeyD'].includes(e.code)?1:-1;if(input===$('tilt')&&!tiltLocked){toast('Сначала зафиксируйте наклон для ручной настройки.');return;}input.value=+input.value+direction*(input===$('depth')?.1:5);updateOutputs();updateInstrument({rotate:input===$('tilt')});}
   if(e.code==='KeyR'||e.code==='KeyF'){e.preventDefault();raiseCamera(e.code==='KeyR'?1:-1);}if(e.key==='?')help();});
  window.addEventListener('pointerup',()=>{if(pressing){stopStroke();updateStats();markDirty();}});window.addEventListener('blur',()=>{stopStroke();setPower(false);save();});document.addEventListener('visibilitychange',()=>{if(document.hidden){stopStroke();setPower(false);save();}});window.addEventListener('pagehide',save);
 }
@@ -204,7 +218,7 @@ function updateOutputs(){for(const [id,unit,mult] of [['depth',' мм',1],['tilt
 async function init(){
  bind();
  try{
-  const results=await Promise.all([fetch('./assets/tooth-volume.json?v=0.4.0').then(r=>{if(!r.ok)throw Error('Метаданные модели недоступны');return r.json();}),fetch('./assets/tooth-volume.bin?v=0.4.0').then(r=>{if(!r.ok)throw Error('Объёмная модель недоступна');return r.arrayBuffer();}),fetch('./assets/tooth-reference.json').then(r=>r.json())]);
+  const results=await Promise.all([fetch('./assets/tooth-volume.json?v=0.5.0').then(r=>{if(!r.ok)throw Error('Метаданные модели недоступны');return r.json();}),fetch('./assets/tooth-volume.bin?v=0.5.0').then(r=>{if(!r.ok)throw Error('Объёмная модель недоступна');return r.arrayBuffer();}),fetch('./assets/tooth-reference.json').then(r=>r.json())]);
   meta=results[0];volume=new ToothVolume(meta,new Uint8Array(results[1]));
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.setClearColor(0x000000,0);renderer.localClippingEnabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
   $('viewport').appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','Трёхмерная модель рабочего зуба. Вращение правой кнопкой мыши.');renderer.domElement.setAttribute('role','img');
@@ -221,8 +235,8 @@ async function init(){
   const sheetGeometry=new THREE.BufferGeometry();sheetGeometry.setAttribute('position',new THREE.Float32BufferAttribute(sheetPositions,3));sheetGeometry.setIndex(sheetIndices);sheetGeometry.computeVertexNormals();cuff.add(new THREE.Mesh(sheetGeometry,new THREE.MeshStandardMaterial({color:0x709d88,roughness:.62,side:THREE.DoubleSide})));
   const seal=new THREE.CatmullRomCurve3(contour.map(p=>new THREE.Vector3(...p)),true);cuff.add(new THREE.Mesh(new THREE.TubeGeometry(seal,segments,.065,8,true),new THREE.MeshStandardMaterial({color:0x537e68,roughness:.65})));cuff.visible=false;scene.add(cuff);
   toolGroup=new THREE.Group();head=new THREE.Mesh(new THREE.SphereGeometry(.65,20,14),new THREE.MeshStandardMaterial({color:0x9ba6a3,metalness:.75,roughness:.3}));toolGroup.add(head);shaft=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,5,16),new THREE.MeshStandardMaterial({color:0xc6d0c9,metalness:.8,roughness:.26}));shaft.position.y=3.2;toolGroup.add(shaft);
-  const handle=new THREE.Mesh(new THREE.CylinderGeometry(.8,.45,5,24),new THREE.MeshStandardMaterial({color:0x75958d,metalness:.65,roughness:.32}));handle.position.y=7.9;handle.rotation.z=.08;toolGroup.add(handle);toolGroup.visible=false;scene.add(toolGroup);
-  worker=new Worker(new URL('./mesh-worker.js?v=0.4.0',import.meta.url),{type:'module'});worker.onmessage=({data:{mesh}})=>{tooth.geometry.dispose();tooth.geometry=geometry(mesh);if(mouthWork){mouthWork.geometry.dispose();mouthWork.geometry=tooth.geometry.clone();}busy=false;if(pending){pending=false;requestMesh();}};worker.onerror=e=>{busy=false;toast('Не удалось обновить геометрию. Перезагрузите страницу; прогресс сохранён.',true);console.error(e);};
+  const handle=new THREE.Mesh(new THREE.CylinderGeometry(.8,.45,5,24),new THREE.MeshStandardMaterial({color:0x75958d,metalness:.65,roughness:.32}));handle.position.y=7.9;handle.rotation.z=.08;toolGroup.add(handle);const grip=new THREE.Mesh(new THREE.BoxGeometry(.16,2.4,.25),new THREE.MeshStandardMaterial({color:0x244d45,roughness:.5}));grip.position.set(.65,8,.15);toolGroup.add(grip);const shaftMark=new THREE.Mesh(new THREE.BoxGeometry(.13,1.2,.18),new THREE.MeshStandardMaterial({color:0x245e4a,roughness:.4}));shaftMark.position.set(.18,2.5,0);toolGroup.add(shaftMark);toolGroup.visible=false;scene.add(toolGroup);
+  worker=new Worker(new URL('./mesh-worker.js?v=0.5.0',import.meta.url),{type:'module'});worker.onmessage=({data:{mesh}})=>{tooth.geometry.dispose();tooth.geometry=geometry(mesh);if(mouthWork){mouthWork.geometry.dispose();mouthWork.geometry=tooth.geometry.clone();}busy=false;if(pending){pending=false;requestMesh();}};worker.onerror=e=>{busy=false;toast('Не удалось обновить геометрию. Перезагрузите страницу; прогресс сохранён.',true);console.error(e);};
   renderer.domElement.addEventListener('pointermove',movePointer);renderer.domElement.addEventListener('pointerdown',beginStroke);renderer.domElement.addEventListener('pointerleave',()=>{pointerInside=false;previous=null;stopStroke();updateInstrument();});renderer.domElement.addEventListener('pointercancel',stopStroke);renderer.domElement.addEventListener('lostpointercapture',()=>{if(pressing)stopStroke();});renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
   renderer.domElement.addEventListener('wheel',e=>{if(e.shiftKey&&view==='tooth'){e.preventDefault();e.stopImmediatePropagation();$('depth').value=+$('depth').value+(e.deltaY>0?.1:-.1);updateOutputs();updateInstrument();}},{passive:false,capture:true});
   const resize=()=>{const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('viewport'));resize();

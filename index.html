@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#142c32">
 <title>KitDentaLab — стоматологический тренажёр</title>
-<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.4.0">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.5.0">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body>
@@ -46,6 +46,7 @@
 
 <div class="section-heading">Текущий этап <span class="pill" id="current-number">01</span></div><h2 id="stage-title">Обследование</h2><p id="stage-description" class="muted">Изучите карту пациента и выберите план лечения.</p>
 <div id="stage-content"></div>
+<section id="early-practice" class="early-practice" hidden></section>
 <div class="divider"></div><div class="section-heading">Параметры инструмента</div>
 <div class="tool-name"><span id="tool-name">Зеркало / осмотр</span><span id="power-status">Неактивен</span></div>
 <button id="power-button" class="power-button" aria-pressed="false"><span class="power-symbol">⏻</span><span>Включить инструмент</span><kbd>Space</kbd></button>
@@ -63,5 +64,5 @@
 </main>
 <footer class="creator-footer"><div><strong>KitDentaLab</strong><span>Стоматологический тренажёр</span></div><div id="creator-credit">Автор идеи и создатель — <strong>Екатерина Дроздова</strong></div><nav id="creator-contacts" aria-label="Контакты создателя"><a href="https://t.me/kit_2195" target="_blank" rel="noopener noreferrer">Telegram</a><a href="mailto:dr.kate95@gmail.com">Эл. почта</a><a href="https://vk.ru/id37568722" target="_blank" rel="noopener noreferrer">ВКонтакте</a></nav></footer>
 <dialog id="modal"><button id="modal-close" class="modal-close" aria-label="Закрыть">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="app.js?v=0.4.0"></script>
+<script type="module" src="app.js?v=0.5.0"></script>
 </body></html>
