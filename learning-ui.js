@@ -36,7 +36,7 @@ export function installGlossary(){
  function hide(){tip.hidden=true;active?.removeAttribute('aria-describedby');active=null;}
  function show(el){clearTimeout(closeTimer);const term=TERMS[el.dataset.term];if(!term)return;active?.removeAttribute('aria-describedby');active=el;tip.innerHTML=`<strong>${term.title}</strong>${diagram(term.kind)}<p>${term.description}</p><small>Схематическое изображение</small>`;
   // The top layer keeps explanations visible inside modal case notes too.
-  const modal=document.querySelector('dialog[open]');(modal||document.body).appendChild(tip);tip.hidden=false;const r=el.getBoundingClientRect();tip.style.left=`${Math.max(12,Math.min(innerWidth-304,r.left+r.width/2-146))}px`;tip.style.top=`${Math.max(8,r.top-tip.offsetHeight-12)}px`;el.setAttribute('aria-describedby',tip.id);
+  const modal=document.querySelector('dialog[open]');(modal||document.body).appendChild(tip);tip.hidden=false;const r=el.getBoundingClientRect();tip.style.left=`${Math.max(12,Math.min(innerWidth-304,r.left+r.width/2-146))}px`;tip.style.top=`${Math.max(8,Math.min(innerHeight-tip.offsetHeight-8,r.top-tip.offsetHeight-12))}px`;if(el.matches('[data-tool]')){tip.style.left=`${Math.max(8,r.left-tip.offsetWidth-12)}px`;tip.style.top=`${Math.max(8,Math.min(innerHeight-tip.offsetHeight-8,r.top))}px`;} el.setAttribute('aria-describedby',tip.id);
  }
  document.addEventListener('pointerover',e=>{const el=e.target.closest?.('[data-term]');if(el)show(el);});
  document.addEventListener('pointerout',e=>{if(e.target.closest?.('[data-term]'))closeTimer=setTimeout(hide,170);});

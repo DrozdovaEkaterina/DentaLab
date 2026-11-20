@@ -1,7 +1,7 @@
 // Recommendations are computed from this virtual tooth, not clinical angle/depth norms.
-export function planEarlyExcavation(volume,radius=.65){
+export function planEarlyExcavation(volume,radius=.65,{beyondIntro=false}={}){
  const stats=volume.stats();
- if(stats.removedVolume>=10)return null;
+ if(!beyondIntro&&stats.removedVolume>=10)return null;
  if(stats.critical)return {status:'stop',title:'Остановите обработку',reason:'Обнаружен контакт с пульпой. Не увеличивайте подачу; откройте разбор результата.'};
  const {size:[nx,ny,nz],origin,step,lesionCenter}=volume.meta,data=volume.data,base=volume.base;
  let best=null;const clearance=radius+.25,cells=Math.ceil(clearance/step);
