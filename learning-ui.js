@@ -1,0 +1,48 @@
+const teeth='<path d="M131 43c-17-15-38-5-34 14 3 18 3 48 13 49 10 0 8-30 18-30s9 30 18 30c11-1 9-30 13-49 4-19-13-29-28-14Z" fill="#f1e9cc" stroke="#9d987d" stroke-width="2"/>';
+function diagram(kind){let body='';
+ if(kind==='dam')body='<rect x="34" y="17" width="190" height="99" rx="12" fill="none" stroke="#849b91" stroke-width="4"/><path d="M43 25h172v83H43z" fill="#84b5a2"/>'+teeth+'<path d="M94 63q34 14 68 0" fill="none" stroke="#267860" stroke-width="4"/><text x="46" y="43">платок</text><text x="176" y="104">рамка</text>';
+ else if(kind==='clamp')body='<path d="M77 65c-27-70 130-70 104 0" fill="none" stroke="#82939b" stroke-width="9"/><path d="m77 63 28 15-20 13-18-17zm104 0-28 15 20 13 18-17z" fill="#b6c1c6" stroke="#657b88" stroke-width="2"/><circle cx="78" cy="55" r="4" fill="#eef5f0"/><circle cx="180" cy="55" r="4" fill="#eef5f0"/><text x="116" y="35">дуга</text><text x="97" y="108">щёчки клампа</text>';
+ else if(kind==='floss')body='<path d="M37 72q44-70 89 0t92-5" fill="none" stroke="#6faaa1" stroke-width="3"/>'+teeth+'<path d="m83 52 92 11" stroke="#f9ffff" stroke-width="3"/><text x="38" y="111">тонкая прочная нить</text>';
+ else if(kind==='lamp')body='<path d="m62 94 24-54 44 4 31 30" fill="none" stroke="#5e8290" stroke-width="15"/><path d="m150 77 29-8-2 28z" fill="#8cbfe9" opacity=".6"/><rect x="180" y="60" width="25" height="38" rx="7" fill="#e9dfc2"/><text x="130" y="115">световод</text>';
+ else {body=teeth+'<path d="M111 46c-12-6-12 4-10 15 3 14 5 23 9 25l13-24 11 24c5-8 9-28 10-34 1-12-16-5-21-2z" fill="#d9ad61"/><path d="M122 54c-5 0-7 6-7 13l-4 22 14-20 13 20-6-23c-1-6-4-12-10-12z" fill="#bd5d5d"/><text x="31" y="38">эмаль</text><path d="m64 40 39 7" stroke="#95a69b"/><text x="179" y="65">дентин</text><path d="m174 61-32-6" stroke="#95a69b"/><text x="174" y="94">пульпа</text><path d="m170 89-43-22" stroke="#95a69b"/>';}
+ return `<svg viewBox="0 0 258 130" role="img" aria-label="Схематическое изображение" xmlns="http://www.w3.org/2000/svg"><rect width="258" height="130" rx="10" fill="#eef5ee"/><g font-family="sans-serif" font-size="10" fill="#536f60">${body}</g></svg>`;
+}
+export const TERMS={
+ dam:{title:'Коффердам',kind:'dam',description:'Тонкий латексный или безлатексный платок, который изолирует рабочее поле от слюны. Его натягивают на рамку, а зуб выводят через отверстие.'},
+ clamp:{title:'Кламп',kind:'clamp',description:'Металлический зажим с дугой и двумя щёчками. Удерживает коффердам на зубе; перед установкой к нему крепят страховочную нить.'},
+ floss:{title:'Флосс',kind:'floss',description:'Зубная нить. Помогает проводить коффердам через межзубные контакты и проверять контактные пункты реставрации.'},
+ ligature:{title:'Страховочная лигатура',kind:'floss',description:'Нить, закреплённая на клампе. Помогает удержать или извлечь его при соскальзывании.'},
+ pulp:{title:'Пульпа',kind:'tissue',description:'Мягкая ткань с сосудами и нервами внутри зуба. На схеме показана красным; окружена дентином.'},
+ dentin:{title:'Дентин',kind:'tissue',description:'Твёрдая ткань под эмалью, окружающая пульпу. На схеме показана тёплым жёлтым оттенком.'},
+ enamel:{title:'Эмаль',kind:'tissue',description:'Наружная твёрдая оболочка коронки. На схеме — светлый поверхностный слой.'},
+ composite:{title:'Композит',kind:'tissue',description:'Реставрационный материал цвета зуба. Заполняет подготовленный дефект; световой композит полимеризуют специальной лампой.'},
+ adhesive:{title:'Адгезивный протокол',kind:'tissue',description:'Последовательность подготовки поверхности и нанесения адгезива для соединения реставрационного материала с тканями зуба. Этапы зависят от выбранной системы.'},
+ occlusion:{title:'Окклюзия',kind:'tissue',description:'Контакты верхних и нижних зубов при смыкании. После реставрации проверяют, не возникло ли завышенного контакта.'},
+ lamp:{title:'Световод',kind:'lamp',description:'Рабочая часть полимеризационной лампы, направляющая свет на материал. Стабильное положение и направление важны для освещения реставрации.'}
+};
+const matcher=/(коффердам[а-яё]*|кламп[а-яё]*|флосс[а-яё]*|лигатур[а-яё]*|пульп[а-яё]*|дентин[а-яё]*|эмал[а-яё]*|композит[а-яё]*|адгезив[а-яё]*|окклюзи[а-яё]*|световод[а-яё]*)/gi;
+function termKey(word){const w=word.toLowerCase();return w.startsWith('кофф')?'dam':w.startsWith('кламп')?'clamp':w.startsWith('флосс')?'floss':w.startsWith('лигат')?'ligature':w.startsWith('пульп')?'pulp':w.startsWith('дент')?'dentin':w.startsWith('эмал')?'enamel':w.startsWith('комп')?'composite':w.startsWith('адгез')?'adhesive':w.startsWith('окклю')?'occlusion':'lamp';}
+export function installGlossary(){
+ const tip=document.createElement('aside');tip.id='term-tooltip';tip.className='term-tooltip';tip.setAttribute('role','tooltip');tip.hidden=true;document.body.appendChild(tip);let active=null,closeTimer;
+ function hide(){tip.hidden=true;active?.removeAttribute('aria-describedby');active=null;}
+ function show(el){clearTimeout(closeTimer);const term=TERMS[el.dataset.term];if(!term)return;active?.removeAttribute('aria-describedby');active=el;tip.innerHTML=`<strong>${term.title}</strong>${diagram(term.kind)}<p>${term.description}</p><small>Схематическое изображение</small>`;
+  // The top layer keeps explanations visible inside modal case notes too.
+  const modal=document.querySelector('dialog[open]');(modal||document.body).appendChild(tip);tip.hidden=false;const r=el.getBoundingClientRect();tip.style.left=`${Math.max(12,Math.min(innerWidth-304,r.left+r.width/2-146))}px`;tip.style.top=`${Math.max(8,r.top-tip.offsetHeight-12)}px`;el.setAttribute('aria-describedby',tip.id);
+ }
+ document.addEventListener('pointerover',e=>{const el=e.target.closest?.('[data-term]');if(el)show(el);});
+ document.addEventListener('pointerout',e=>{if(e.target.closest?.('[data-term]'))closeTimer=setTimeout(hide,170);});
+ tip.addEventListener('pointerenter',()=>clearTimeout(closeTimer));tip.addEventListener('pointerleave',hide);
+ document.addEventListener('focusin',e=>{if(e.target.matches?.('[data-term]'))show(e.target);});document.addEventListener('focusout',e=>{if(e.target.matches?.('[data-term]'))hide();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape')hide();});document.addEventListener('click',e=>{const el=e.target.closest?.('[data-term]');if(el)show(el);else if(!e.target.closest?.('#term-tooltip'))hide();});
+ document.addEventListener('scroll',hide,true);document.querySelector('dialog')?.addEventListener('close',hide);
+ return function annotate(root){if(!root)return;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT,{acceptNode:n=>n.parentElement.closest('[data-term],button,a,script,style,output,option,#term-tooltip')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});const nodes=[];while(walker.nextNode())nodes.push(walker.currentNode);
+  for(const node of nodes){const text=node.textContent;matcher.lastIndex=0;if(!matcher.test(text))continue;matcher.lastIndex=0;const fragment=document.createDocumentFragment();let from=0;for(const match of text.matchAll(matcher)){fragment.append(text.slice(from,match.index));const el=document.createElement('span');el.className='term';el.tabIndex=0;el.dataset.term=termKey(match[0]);el.textContent=match[0];fragment.append(el);from=match.index+match[0].length;}fragment.append(text.slice(from));node.replaceWith(fragment);}
+ };
+}
+export const GUIDE_STEPS=[
+ [{title:'Найдите поражение',text:'Осмотрите тёмный участок жевательной поверхности. ПКМ вращает зуб, колесо приближает.',target:'lesion'}, {title:'Изучите жалобы',text:'Откройте карту пациента: сначала анамнез и обследование, затем план лечения.',target:'#patient-button'}, {title:'Выберите план',text:'Примите план в карте случая и переходите к подготовке рабочего поля.',target:'#open-patient'}],
+ [{title:'Изолируйте шейку',text:'Коффердам должен плотно прилегать вокруг шейки зуба. Здесь проходит линия изоляции.',target:'neck'},{title:'Проверьте изоляцию',text:'Выполните шаги подготовки справа и подтвердите сухость и устойчивость рабочего поля.',target:'#isolation-check'},{title:'Начните обработку',text:'После проверки изоляции переходите к препарированию.',target:'#begin-prep'}],
+ [{title:'Работайте в зоне поражения',text:'Наведите рабочую часть на поражённую поверхность. Наклон и поворот следуют за мышью; каждый можно зафиксировать.',target:'lesion'},{title:'Выберите бор',text:'Для знакомства с контактом выберите шаровидную рабочую часть.',target:'[data-tool="round"]'},{title:'Включите инструмент',text:'Включите питание. Удержание ЛКМ выполняет действие, отпускание останавливает работу.',target:'#power-button'},{title:'Проверьте охлаждение',text:'Вода отводит тепло из зоны контакта. Перед обработкой проверьте переключатель.',target:'#cooling'},{title:'Контролируйте подачу',text:'Увеличивайте подачу постепенно. Следите за сохранением непоражённых тканей и близостью пульпы.',target:'#depth'}],
+ [{title:'Восстановите дефект',text:'Сначала оцените подготовленную полость и выполните адгезивный протокол.',target:'lesion'},{title:'Внесите материал',text:'Выберите композит, подведите наконечник к дефекту и удерживайте ЛКМ.',target:'[data-tool="composite"]'},{title:'Полимеризуйте материал',text:'Направьте лампу на реставрацию. Для модели удерживайте ЛКМ до завершения индикатора.',target:'[data-tool="light"]'},{title:'Завершите поверхность',text:'Финируйте реставрацию, сохраняя её форму и окружающие ткани.',target:'[data-tool="polish"]'}],
+ [{title:'Осмотрите результат',text:'Вращайте зуб, проверяя форму реставрации, края и сохранность тканей.',target:'lesion'},{title:'Откройте разбор',text:'Сравните удалённые ткани, заполнение дефекта и состояние пульпы в отчёте.',target:'#finish-button'}]
+];

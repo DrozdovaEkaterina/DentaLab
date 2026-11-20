@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#142c32">
 <title>DentaLab — стоматологический 3D-тренажёр</title>
-<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.2.1">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.3.0">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body>
@@ -24,10 +24,11 @@
 <button id="start-over" class="restart-button">Начать сначала</button>
 </aside>
 <section class="simulation" aria-label="Рабочая область 3D-тренажёра">
-<div class="scene-top"><div class="segmented" id="view-buttons"><button data-view="tooth" class="selected">Рабочий зуб</button><button data-view="mouth">Полость рта</button></div><div class="scene-badges"><span id="mode-badge">Обучение</span><span class="model-badge">3D · исходная модель</span></div></div>
+<div class="scene-top"><div class="segmented" id="view-buttons"><button data-view="tooth" class="selected">Рабочий зуб</button><button data-view="mouth">Полость рта</button></div><div class="scene-badges"><button id="guide-toggle" aria-pressed="true">Подсказки</button><span id="mode-badge">Обучение</span><span class="model-badge">3D · исходная модель</span></div></div>
 <div id="viewport"><div id="loading"><span class="loader"></span>Подготавливаем рабочий зуб…</div><div id="webgl-error" hidden><h2>Не удалось запустить 3D</h2><p>Нужен браузер с включённым WebGL 2 и аппаратным ускорением.</p></div></div>
 <div class="scene-label"><span class="crosshair">⌖</span><div id="scene-title">Коронка и корни моляра<small id="scene-description">Моляр, выделенный из исходной модели</small></div></div>
 <div class="view-toolbar"><button id="reset-view" title="Вернуть камеру" aria-label="Вернуть камеру">⌖</button><button id="top-view" title="Вид сверху" aria-label="Вид сверху">⊤</button><button id="section-button" title="Учебный разрез">Разрез</button><button id="lesion-button" title="Показать объём поражения">Поражение</button><button id="roots-button" class="active" aria-pressed="true" title="Показать или скрыть корни">Корни</button></div>
+<aside id="case-coach" class="case-coach" hidden><div class="coach-top"><span>СЛУЧАЙ 01 · ПОДСКАЗКА</span><button id="coach-dismiss" aria-label="Скрыть подсказки">×</button></div><h3 id="coach-title"></h3><p id="coach-copy"></p><div class="coach-nav"><button id="coach-prev">Назад</button><span id="coach-progress"></span><button id="coach-next">Далее</button></div></aside>
 <div id="hover-info" class="hover-info">Наведите инструмент на зуб</div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
 <div class="scene-bottom"><span><span class="key-icon">ПКМ</span> вращать <span class="key-icon">Колесо</span> масштаб <span class="key-icon">ЛКМ</span> работать</span><button id="undo-button" disabled>Отменить действие <kbd>⌘Z</kbd></button></div>
@@ -49,9 +50,11 @@
 <div class="tool-name"><span id="tool-name">Зеркало / осмотр</span><span id="power-status">Неактивен</span></div>
 <button id="power-button" class="power-button" aria-pressed="false"><span class="power-symbol">⏻</span><span>Включить инструмент</span><kbd>Space</kbd></button>
 <div class="parameter"><label for="depth">Подача от поверхности <output id="depth-value">0.0 мм</output></label><input id="depth" type="range" min="-0.5" max="5" value="0" step="0.1"><div class="range-labels"><span>Над поверхностью</span><span>В глубину</span></div></div>
-<div class="angle-grid"><div class="parameter"><label for="tilt">Наклон <output id="tilt-value">0°</output></label><input id="tilt" type="range" min="0" max="65" value="0" step="1"></div><div class="parameter"><label for="yaw">Поворот <output id="yaw-value">0°</output></label><input id="yaw" type="range" min="-180" max="180" value="0" step="5"></div></div>
+<div class="angle-grid"><div class="parameter"><label for="tilt">Наклон <output id="tilt-value">0°</output></label><button id="lock-tilt" class="axis-lock" aria-pressed="false">Зафиксировать</button><input id="tilt" disabled type="range" min="0" max="65" value="0" step="1"></div><div class="parameter"><label for="yaw">Поворот <output id="yaw-value">0°</output></label><button id="lock-yaw" class="axis-lock" aria-pressed="false">Зафиксировать</button><input id="yaw" disabled type="range" min="-180" max="180" value="0" step="5"></div></div>
+<p class="auto-aim-note">Наклон и поворот следуют за мышью. Зафиксируйте нужную ось для точной работы.</p>
 <div class="parameter"><label for="radius">Диаметр рабочей части <output id="radius-value">1.3 мм</output></label><input id="radius" type="range" min="0.35" max="1.1" value="0.65" step="0.05"></div>
 <label class="switch-row" for="cooling"><span>Водяное охлаждение</span><input id="cooling" type="checkbox" checked role="switch"></label>
+<p id="parameter-effect" class="parameter-effect" role="status" hidden></p>
 <div class="telemetry"><div><span>Поражённые ткани удалены</span><strong id="removed-volume">0.0 <small>мм³</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0.0 <small>мм³</small></strong></div></div>
 <div class="mentor" id="mentor"><div class="mentor-heading"><span>✦</span>Клиническая подсказка</div><p id="hint-text">Начните с обследования. Метод лечения выбирают после оценки состояния зуба и пульпы.</p><button id="hint-source" class="text-button">Обоснование и источник</button></div>
 <button id="finish-button" class="primary-button">Разбор результата</button>
@@ -59,5 +62,5 @@
 </aside>
 </main>
 <dialog id="modal"><button id="modal-close" class="modal-close" aria-label="Закрыть">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="app.js?v=0.2.1"></script>
+<script type="module" src="app.js?v=0.3.0"></script>
 </body></html>

@@ -1,0 +1,9 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import {followPointer,isolationContour} from '../interaction.js';
+const center=[0,4,0];
+test('automatic inclination and yaw change with mouse contact position',()=>{const a=followPointer([1,4,1],center),b=followPointer([-3,4,1],center);assert.notEqual(a.tilt,b.tilt);assert.notEqual(a.yaw,b.yaw);assert.ok(a.tilt>=0&&a.tilt<=60);});
+test('independent axis locks preserve their values exactly',()=>{const s={tilt:27,yaw:-45};const a=followPointer([4,3,2],center,{...s,tiltLocked:true});assert.equal(a.tilt,27);assert.notEqual(a.yaw,-45);const b=followPointer([4,3,2],center,{...s,yawLocked:true});assert.equal(b.yaw,-45);assert.notEqual(b.tilt,27);const c=followPointer([-4,3,-2],center,{...s,tiltLocked:true,yawLocked:true});assert.deepEqual(c,s);});
+test('yaw remains stable at the centre and automatic inclination is bounded',()=>{assert.equal(followPointer([0,4,0],center,{yaw:35}).yaw,35);assert.equal(followPointer([100,4,100],center).tilt,60);});
+test('isolation inner edge tracks the cervical contour without the former air gap',()=>{const meta=JSON.parse(fs.readFileSync(new URL('../assets/tooth-volume.json',import.meta.url)));const data=fs.readFileSync(new URL('../assets/tooth-volume.bin',import.meta.url));const points=isolationContour(data,meta);assert.equal(points.length,128);const {origin,step,size:[nx,ny,nz]}=meta;const iy=Math.round((-.65-origin[1])/step);for(const [px,y,pz] of points){assert.ok([px,y,pz].every(Number.isFinite));assert.equal(y,-.65);const a=Math.atan2(pz,px);let radius=0;for(let r=0;r<12;r+=step*.25){const x=Math.round((r*Math.cos(a)-origin[0])/step),z=Math.round((r*Math.sin(a)-origin[2])/step);if(x>=0&&x<nx&&z>=0&&z<nz&&data[x+nx*(iy+ny*z)])radius=r;}assert.ok(Math.abs(Math.hypot(px,pz)-radius)<.4);}});

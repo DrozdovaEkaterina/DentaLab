@@ -1,4 +1,4 @@
-import {surfaceNets} from './mesher.js?v=0.2.1';
+import {surfaceNets} from './mesher.js?v=0.3.0';
 self.onmessage=({data:{volume,meta,request}})=>{
  const mesh=surfaceNets(volume,meta);
  self.postMessage({mesh,request},[mesh.positions.buffer,mesh.colors.buffer,mesh.tissues.buffer,mesh.indices.buffer]);
