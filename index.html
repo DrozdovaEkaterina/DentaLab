@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#142c32">
+<title>DentaLab — стоматологический 3D-тренажёр</title>
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css">
+<script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="./" aria-label="DentaLab, главная"><svg viewBox="0 0 32 36" aria-hidden="true"><path d="M16 7C8-1 1 6 4 16c2 6 2 15 6 16 4 0 2-11 6-11s2 11 6 11c4-1 4-10 6-16C31 6 24-1 16 7Z" fill="none" stroke="currentColor" stroke-width="2.3"/></svg><span>Denta<span class="brand-light">Lab</span><small>КЛИНИЧЕСКАЯ ПРАКТИКА</small></span></a><nav class="topnav"><button id="cases-button">Клинические случаи</button><button id="sources-button">База знаний</button><button id="help-button">Управление <kbd>?</kbd></button></nav><div class="local-label"><span></span>Прогресс на этом устройстве</div><button id="data-button" class="avatar" aria-label="Сохранения и экспорт">Л</button></header>
+<main class="workspace">
+<aside class="case-panel">
+<div class="eyebrow">ТЕРАПЕВТИЧЕСКАЯ СТОМАТОЛОГИЯ</div><h1>Сохранить зуб</h1><p class="case-subtitle">Кариес жевательной поверхности</p>
+<div class="case-meta"><span>Случай 01</span><span>Постоянный моляр</span></div>
+<label class="mode-label" for="mode">Режим прохождения</label><select id="mode"><option value="learn">Обучение с подсказками</option><option value="exam">Самостоятельная практика</option></select>
+<div class="section-heading">План приёма <span id="stage-count">1 / 5</span></div>
+<ol id="stages" class="stages">
+<li><button data-stage="0" class="active"><span class="step-number">1</span><span>Обследование<small>Анамнез и план лечения</small></span><span class="step-state"></span></button></li>
+<li><button data-stage="1"><span class="step-number">2</span><span>Подготовка<small>Изоляция рабочего поля</small></span><span class="step-state"></span></button></li>
+<li><button data-stage="2"><span class="step-number">3</span><span>Препарирование<small>Сохранение здоровых тканей</small></span><span class="step-state"></span></button></li>
+<li><button data-stage="3"><span class="step-number">4</span><span>Восстановление<small>Материал и форма</small></span><span class="step-state"></span></button></li>
+<li><button data-stage="4"><span class="step-number">5</span><span>Контроль результата<small>Разбор выполненной работы</small></span><span class="step-state"></span></button></li>
+</ol>
+<div class="patient-card"><div class="patient-heading"><span class="patient-icon">+</span><span>Виртуальный пациент<small>Взрослый · учебный случай</small></span></div><p>Кратковременная чувствительность от сладкого и холодного. Самопроизвольную боль отрицает.</p><button id="patient-button" class="text-button">Открыть карту случая</button></div>
+<div class="prototype-note"><span>Учебный прототип · 0.1</span>Внутренняя анатомия реконструирована. Сценарий ожидает проверки стоматологом.</div>
+</aside>
+<section class="simulation" aria-label="Рабочая область 3D-тренажёра">
+<div class="scene-top"><div class="segmented" id="view-buttons"><button data-view="tooth" class="selected">Рабочий зуб</button><button data-view="mouth">Полость рта</button></div><div class="scene-badges"><span id="mode-badge">Обучение</span><span class="model-badge">3D · исходная модель</span></div></div>
+<div id="viewport"><div id="loading"><span class="loader"></span>Подготавливаем рабочий зуб…</div><div id="webgl-error" hidden><h2>Не удалось запустить 3D</h2><p>Нужен браузер с включённым WebGL 2 и аппаратным ускорением.</p></div></div>
+<div class="scene-label"><span class="crosshair">⌖</span><div id="scene-title">Окклюзионная поверхность<small id="scene-description">Моляр, выделенный из исходной модели</small></div></div>
+<div class="view-toolbar"><button id="reset-view" title="Вернуть камеру" aria-label="Вернуть камеру">⌖</button><button id="top-view" title="Вид сверху" aria-label="Вид сверху">⊤</button><button id="section-button" title="Учебный разрез">Разрез</button><button id="lesion-button" title="Показать объём поражения">Поражение</button><button id="roots-button" title="Показать корни">Корни</button></div>
+<div id="hover-info" class="hover-info">Наведите инструмент на зуб</div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+<div class="scene-bottom"><span><span class="key-icon">ПКМ</span> вращать <span class="key-icon">Колесо</span> масштаб <span class="key-icon">ЛКМ</span> работать</span><button id="undo-button" disabled>Отменить действие <kbd>⌘Z</kbd></button></div>
+<div class="tool-dock" id="tool-dock" aria-label="Инструменты">
+<button data-tool="inspect" class="active"><span class="tool-illustration probe"></span><span>Осмотр</span><kbd>1</kbd></button>
+<button data-tool="round"><span class="tool-illustration round"></span><span>Шаровидный бор</span><kbd>2</kbd></button>
+<button data-tool="fissure"><span class="tool-illustration fissure"></span><span>Фиссурный бор</span><kbd>3</kbd></button>
+<button data-tool="composite"><span class="tool-illustration composite"></span><span>Композит</span><kbd>4</kbd></button>
+<button data-tool="light"><span class="tool-illustration light"></span><span>Полимеризация</span><kbd>5</kbd></button>
+<button data-tool="polish"><span class="tool-illustration polish"></span><span>Финирование</span><kbd>6</kbd></button>
+</div>
+</section>
+<aside class="control-panel">
+<div class="section-heading">Текущий этап <span class="pill" id="current-number">01</span></div><h2 id="stage-title">Обследование</h2><p id="stage-description" class="muted">Изучите карту пациента и выберите план лечения.</p>
+<div id="stage-content"></div>
+<div class="divider"></div><div class="section-heading">Параметры инструмента</div>
+<div class="tool-name"><span id="tool-name">Зеркало / осмотр</span><span id="power-status">Неактивен</span></div>
+<button id="power-button" class="power-button" aria-pressed="false"><span class="power-symbol">⏻</span><span>Включить инструмент</span><kbd>Space</kbd></button>
+<div class="parameter"><label for="depth">Подача от поверхности <output id="depth-value">0.0 мм</output></label><input id="depth" type="range" min="-0.5" max="5" value="0" step="0.1"><div class="range-labels"><span>Над поверхностью</span><span>В глубину</span></div></div>
+<div class="angle-grid"><div class="parameter"><label for="tilt">Наклон <output id="tilt-value">0°</output></label><input id="tilt" type="range" min="0" max="65" value="0" step="1"></div><div class="parameter"><label for="yaw">Поворот <output id="yaw-value">0°</output></label><input id="yaw" type="range" min="-180" max="180" value="0" step="5"></div></div>
+<div class="parameter"><label for="radius">Диаметр рабочей части <output id="radius-value">1.3 мм</output></label><input id="radius" type="range" min="0.35" max="1.1" value="0.65" step="0.05"></div>
+<label class="switch-row" for="cooling"><span>Водяное охлаждение</span><input id="cooling" type="checkbox" checked role="switch"></label>
+<div class="telemetry"><div><span>Глубина подачи</span><strong id="live-depth">0.0 <small>мм</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0.0 <small>мм³</small></strong></div></div>
+<div class="mentor" id="mentor"><div class="mentor-heading"><span>✦</span>Клиническая подсказка</div><p id="hint-text">Начните с обследования. Метод лечения выбирают после оценки состояния зуба и пульпы.</p><button id="hint-source" class="text-button">Обоснование и источник</button></div>
+<button id="finish-button" class="primary-button">Разбор результата</button>
+<div id="save-status" class="save-status" role="status">Сохранение локально · без аккаунта</div>
+</aside>
+</main>
+<dialog id="modal"><button id="modal-close" class="modal-close" aria-label="Закрыть">×</button><div id="modal-content"></div></dialog>
+<script type="module" src="app.js"></script>
+</body></html>

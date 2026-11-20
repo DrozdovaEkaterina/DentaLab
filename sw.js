@@ -1,0 +1,6 @@
+const CACHE='dentalab-v1-20261120';
+const FILES=['./','./index.html','./style.css','./app.js','./volume.js','./mesher.js','./mesh-worker.js','./assets/icon.svg','./assets/tooth-volume.json','./assets/tooth-volume.bin','./assets/tooth-reference.json','./assets/human_mouth_detailed.glb','./vendor/three.module.js','./vendor/GLTFLoader.js','./vendor/OrbitControls.js','./vendor/BufferGeometryUtils.js'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(FILES)));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k.startsWith('dentalab-')&&k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+// Online-first permits repairs to arrive immediately. Offline uses a complete local copy.
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET'||new URL(e.request.url).origin!==self.location.origin)return;e.respondWith(fetch(e.request).then(r=>{if(r.ok&&FILES.some(f=>new URL(f,self.registration.scope).href===e.request.url)){const copy=r.clone();caches.open(CACHE).then(c=>c.put(e.request,copy));}return r;}).catch(()=>caches.match(e.request).then(r=>r||new Response('Офлайн-копия недоступна. Подключитесь к сети для первой загрузки.',{status:503,headers:{'Content-Type':'text/plain;charset=utf-8'}}))));});
