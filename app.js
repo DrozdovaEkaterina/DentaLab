@@ -1,15 +1,15 @@
 import * as THREE from 'three';
 import {OrbitControls} from './vendor/OrbitControls.js';
 import {GLTFLoader} from './vendor/GLTFLoader.js';
-import {ToothVolume} from './volume.js?v=0.6.0';
-import {surfaceNets} from './mesher.js?v=0.6.0';
-import {makeToothMaterial} from './tooth-material.js?v=0.6.0';
-import {constrainToolAngles,toolCollisionScore,toolAxis,pulpClearance} from './collision.js?v=0.6.0';
-import {planEarlyExcavation} from './early-coach.js?v=0.6.0';
-import {CASES,caseViewPolicy} from './case-config.js?v=0.6.0';
-import {followPointer,isolationContour,instrumentQuaternion} from './interaction.js?v=0.6.0';
-import {installGlossary} from './learning-ui.js?v=0.6.0';
-import {installCoach} from './coach.js?v=0.6.0';
+import {trainingCase} from './training-case.js?v=0.7.0';
+import {surfaceNets} from './mesher.js?v=0.7.0';
+import {makeToothMaterial} from './tooth-material.js?v=0.7.0';
+import {constrainToolAngles,toolCollisionScore,toolAxis,pulpClearance} from './collision.js?v=0.7.0';
+import {planEarlyExcavation} from './early-coach.js?v=0.7.0';
+import {CASES,caseViewPolicy} from './case-config.js?v=0.7.0';
+import {followPointer,isolationContour,instrumentQuaternion} from './interaction.js?v=0.7.0';
+import {installGlossary} from './learning-ui.js?v=0.7.0';
+import {installCoach} from './coach.js?v=0.7.0';
 import {RoomEnvironment} from './vendor/RoomEnvironment.js';
 const $=id=>document.getElementById(id);
 const STORAGE='dentalab.caries.v1';
@@ -24,11 +24,12 @@ const SOURCES=[
 ];
 const names={inspect:'Зеркало / осмотр',round:'Шаровидный бор',fissure:'Фиссурный бор',composite:'Внесение композита',light:'Полимеризационная лампа',polish:'Финирование реставрации'};
 const descriptions=[['Обследование','Изучите карту пациента и выберите план лечения.'],['Подготовка','Обеспечьте изоляцию рабочего поля перед вмешательством.'],['Препарирование','Работайте короткими контролируемыми движениями. Сохраняйте здоровые ткани.'],['Восстановление','Заполните подготовленный дефект, затем полимеризуйте материал.'],['Контроль результата','Оцените оставшийся дефект, материал и повреждения тканей.']];
+let originalMeta,originalBase,poseBlocked=false;
 let volume,meta,renderer,scene,camera,controls,tooth,reference,toolGroup,head,shaft,lesionMesh,pulpMesh,fullMouth,mouthHighlight,mouthWork,fullOriginalTooth;
 let stage=0,diagnosed=false,isolated=false,tool='inspect',powered=false,view='tooth',mode='learn',showRoots=true,section=false,showLesion=false;
 let cursor=null,previous=null,pressing=false,pointerInside=false,worker,busy=false,pending=false,meshRevision=0,history=[],timer,lastTick=0,saveTimer,dirty=false,lightTime=0,statsCache,lastStats=0,lastGate='';
 let earlyPlan=null,earlySignature='';
-let surfaceContact=false,lastSurfaceEntry=null,lastPointer=null,pulpFocus=null,lastAngles={tilt:0,yaw:0},lastCollisionToast=0,stagesCollapsed=innerWidth<=900,pulpSignature='';
+let surfaceContact=false,lastSurfaceEntry=null,lastPointer=null,pulpFocus=null,lastAngles={tilt:0,yaw:0},lastCollisionToast=0,stagesCollapsed=false,pulpSignature='';
 let toolPoseReady=false,activeCaseId=1,mouthLoading=false;
 let isReady=false,tiltLocked=false,yawLocked=false,guideEnabled=true;
 const axis=new THREE.Vector3(0,-1,0),ray=new THREE.Raycaster(),mouse=new THREE.Vector2(),normal=new THREE.Vector3(0,1,0);
@@ -83,6 +84,7 @@ function updateHint(){
  const nextHint=mode==='exam'?'Подсказки скрыты. Вы можете открыть базу знаний или завершить попытку и посмотреть разбор.':hint;if($('hint-text').textContent!==nextHint){$('hint-text').textContent=nextHint;annotate($('hint-text'));}
 }
 function geometry(mesh){const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(mesh.positions,3));g.setAttribute('color',new THREE.BufferAttribute(mesh.colors,3));g.setAttribute('tissue',new THREE.BufferAttribute(mesh.tissues,1));g.setIndex(new THREE.BufferAttribute(mesh.indices,1));g.computeVertexNormals();g.computeBoundingSphere();return g;}
+function refreshBaseline(){if(!reference)return;for(const [mesh,kind] of [[reference,undefined],[lesionMesh,3],[pulpMesh,4]]){mesh.geometry.dispose();mesh.geometry=geometry(surfaceNets(volume.base,meta,kind));}earlySignature='';pulpSignature='';lastSurfaceEntry=null;}
 function requestMesh(){if(!worker)return;if(busy){pending=true;return;}busy=true;worker.postMessage({volume:volume.data.slice(),meta,request:++meshRevision});}
 function updateClip(){if(!tooth)return;tooth.material.clippingPlanes=[...(!showRoots?[clips.crown]:[]),...(section?[clips.section]:[])];tooth.material.needsUpdate=true;reference.material.clippingPlanes=tooth.material.clippingPlanes;
  if(pulpMesh){pulpMesh.visible=section&&view==='tooth';pulpMesh.material.clippingPlanes=showRoots?[]:[clips.crown];}if(lesionMesh)lesionMesh.visible=showLesion&&mode==='learn'&&view==='tooth';
@@ -108,14 +110,16 @@ function updateInstrument({rotate=false,quiet=false}={}){if(!toolGroup)return;
  const positionForAngles=a=>{const p=cursor.clone();if(surfaceContact&&pointerInside)p.addScaledVector(new THREE.Vector3(...toolAxis(a.tilt,a.yaw)),+$('depth').value);return p.toArray();};
  let accepted={...proposed,blocked:false};
  if(volume&&tool!=='inspect'){
-  const options={tool,radius:+$('radius').value,positionForAngles};const overlap=surfaceContact?toolCollisionScore(volume,positionForAngles(proposed),proposed.tilt,proposed.yaw,options):0;
-  if(overlap||Math.abs(proposed.tilt-lastAngles.tilt)>.01||Math.abs(proposed.yaw-lastAngles.yaw)>.01){let previous=lastAngles;const vertical={tilt:0,yaw:proposed.yaw};if(overlap&&toolCollisionScore(volume,positionForAngles(vertical),vertical.tilt,vertical.yaw,options)===0)previous=vertical;accepted=constrainToolAngles(volume,positionForAngles(proposed),previous,proposed,options);if(overlap&&accepted.tilt===proposed.tilt&&accepted.yaw===proposed.yaw)accepted.blocked=true;}
+  const options={tool,radius:+$('radius').value,positionForAngles,tiltLocked,yawLocked};const overlap=surfaceContact?toolCollisionScore(volume,positionForAngles(proposed),proposed.tilt,proposed.yaw,options):0;
+  if(overlap||Math.abs(proposed.tilt-lastAngles.tilt)>.01||Math.abs(proposed.yaw-lastAngles.yaw)>.01){let previous=lastAngles;const vertical={tilt:0,yaw:proposed.yaw};if(!tiltLocked&&overlap&&toolCollisionScore(volume,positionForAngles(vertical),vertical.tilt,vertical.yaw,options)===0)previous=vertical;accepted=constrainToolAngles(volume,positionForAngles(proposed),previous,proposed,options);if(overlap&&accepted.tilt===proposed.tilt&&accepted.yaw===proposed.yaw)accepted.blocked=true;}
  }
 
  $('tilt').value=accepted.tilt;$('yaw').value=accepted.yaw;lastAngles={tilt:accepted.tilt,yaw:accepted.yaw};
- axis.set(...toolAxis(accepted.tilt,accepted.yaw));toolGroup.position.fromArray(positionForAngles(accepted));toolGroup.quaternion.fromArray(instrumentQuaternion(accepted.tilt,accepted.yaw));toolPoseReady=true;
+ axis.set(...toolAxis(accepted.tilt,accepted.yaw));toolGroup.position.fromArray(positionForAngles(accepted));poseBlocked=false;
+ if(surfaceContact&&pointerInside&&tool!=='inspect'&&toolCollisionScore(volume,toolGroup.position.toArray(),accepted.tilt,accepted.yaw,{tool,radius:+$('radius').value})>0){poseBlocked=true;accepted.blocked=true;for(let lift=0;lift<80;lift++){toolGroup.position.addScaledVector(axis,-.25);if(!toolCollisionScore(volume,toolGroup.position.toArray(),accepted.tilt,accepted.yaw,{tool,radius:+$('radius').value}))break;}}
+ toolGroup.quaternion.fromArray(instrumentQuaternion(accepted.tilt,accepted.yaw));toolPoseReady=true;
  $('angle-contact-status').hidden=!accepted.blocked;
- if(accepted.blocked){$('angle-contact-status').textContent='Поворот ограничен: стержень или рукоятка упирается в структуру зуба. Уменьшите подачу либо сместите рабочую точку.';if(!quiet&&performance.now()-lastCollisionToast>2200){lastCollisionToast=performance.now();toast('Поворот остановлен у структуры зуба. Приподнимите инструмент или выберите другую точку.');}}
+ if(accepted.blocked){$('angle-contact-status').textContent=poseBlocked?'Углы сохранены. Инструмент отведён от столкновения; обработка в этой точке заблокирована. Уменьшите подачу или смените точку.':'Поворот ограничен структурой зуба. Зафиксированные параметры сохранены; измените свободный угол или рабочую точку.';if(!quiet&&performance.now()-lastCollisionToast>2200){lastCollisionToast=performance.now();toast('Поворот остановлен у структуры зуба. Приподнимите инструмент или выберите другую точку.');}}
  updateOutputs();
  const radius=+$('radius').value;
  head.visible=true;if(head.userData.shape!==`${tool}:${radius}`){head.geometry.dispose();head.geometry=tool==='fissure'?new THREE.CylinderGeometry(radius,radius,1.8,20):new THREE.SphereGeometry(tool==='light'?1.1:radius,20,14);head.userData.shape=`${tool}:${radius}`;}
@@ -154,13 +158,13 @@ function movePointer(event){if(!isReady||view!=='tooth')return;const rect=render
 }
 function snapshot(){history.push({data:volume.data.slice(),metrics:{...volume.metrics}});if(history.length>18)history.shift();$('undo-button').disabled=false;}
 function stopStroke(){pressing=false;previous=null;lightTime=0;lastGate='';if(controls)controls.enabled=true;}
-function beginStroke(e){if(e.button!==0||tool==='inspect'||view!=='tooth'||!isReady)return;movePointer(e);if(!cursor||!surfaceContact)return;
+function beginStroke(e){if(e.button!==0||tool==='inspect'||view!=='tooth'||!isReady)return;movePointer(e);if(!cursor||!surfaceContact)return;if(poseBlocked){toast('При этих углах нет свободного доступа. Уменьшите подачу или сместите бор.',true);return;}
  if(!powered){toast('Включите инструмент кнопкой питания или клавишей Space.');return;}
  if(!diagnosed||!isolated){toast(!diagnosed?'Сначала изучите карту случая и примите учебный план.':'Сначала изолируйте рабочее поле.',true);return;}
  if(section){toast('Отключите учебный разрез перед работой инструментом.');return;}
  snapshot();pressing=true;previous=cursor.clone().addScaledVector(axis,-(+$('radius').value+1));controls.enabled=false;renderer.domElement.setPointerCapture(e.pointerId);lastTick=performance.now();
 }
-function work(dt){if(!pressing||!powered||!cursor||!pointerInside||!surfaceContact||view!=='tooth')return;
+function work(dt){if(!pressing||!powered||!cursor||!pointerInside||!surfaceContact||poseBlocked||view!=='tooth')return;
  const tip=cursor.clone().addScaledVector(axis,+$('depth').value);
  if(tool==='light'){
   const s=volume.stats();if(!s.uncured){if(!lastGate){toast('В полости пока нет неполимеризованного материала.');lastGate='empty';}return;}
@@ -183,7 +187,7 @@ function updateEarlyPractice(){
  if(!earlyPlan){box.innerHTML='';return;}
  const p=earlyPlan;
  if(p.status!=='work'){box.innerHTML=`<h3>${p.title}</h3><p>${p.reason}</p><button id="early-look">${p.status==='stop'?'Открыть разбор':'Посмотреть сверху'}</button>`;$('early-look').onclick=()=>{stopStroke();setPower(false);if(p.status==='stop')report();else resetCamera(true);};return;}
- box.innerHTML=`<div class="early-heading"><strong>Первые 10 мм³</strong><span>${p.removed.toFixed(1)} / 10 мм³</span></div><div class="progress-track"><div style="width:${Math.min(100,p.removed*10)}%"></div></div><p><b>Обзор.</b> Посмотрите сверху; для стенки слегка поверните модель ПКМ.</p><p><b>Наклон и поворот.</b> Для отмеченной точки: ${p.tilt}° / ${p.yaw}°. Фиксация осей помогает удерживать направление.</p><p><b>Подача.</b> Ориентир ${p.depth.toFixed(1)} мм от исходной поверхности. После короткого прохода осмотрите полость; прибавляйте по 0,1 мм, пока видимая поражённая ткань остаётся под рабочей частью. При 0 мм центр рабочей части находится на исходной поверхности, а её нижняя часть уже касается ткани.</p><p>${p.reason} У пульпы остановитесь и пересмотрите обработку.</p><div class="early-actions"><button id="early-look">Посмотреть сверху</button><button id="early-settings">Выставить углы и подачу</button></div><small>Ориентиры рассчитаны для точки на 3D-модели; 10 мм³ — этап обучения.</small>`;
+ box.innerHTML=`<div class="early-heading"><strong>${p.goal<10?'Первое препарирование':'Первые 10 мм³'}</strong><span>${p.removed.toFixed(1).replace('.',',')} / ${p.goal.toFixed(1).replace('.',',')} мм³</span></div><div class="progress-track"><div style="width:${Math.min(100,p.removed/p.goal*100)}%"></div></div><p><b>Обзор.</b> Посмотрите сверху; для стенки слегка поверните модель ПКМ.</p><p><b>Наклон и поворот.</b> Для отмеченной точки: ${p.tilt}° / ${p.yaw}°. Фиксация осей помогает удерживать направление.</p><p><b>Подача.</b> Ориентир ${p.depth.toFixed(1)} мм от исходной поверхности. После короткого прохода осмотрите полость; прибавляйте по 0,1 мм, пока видимая поражённая ткань остаётся под рабочей частью. При 0 мм центр рабочей части находится на исходной поверхности, а её нижняя часть уже касается ткани.</p><p>${p.reason} У пульпы остановитесь и пересмотрите обработку.</p><div class="early-actions"><button id="early-look">Посмотреть сверху</button><button id="early-settings">Выставить углы и подачу</button></div><small>Ориентиры рассчитаны для точки на 3D-модели; объём — учебный ориентир, а не требование удалить ткани до нуля.</small>`;
  $('early-look').onclick=()=>{stopStroke();setPower(false);resetCamera(true);guideEnabled=true;coach.goTo(1);markDirty();};
  $('early-settings').onclick=()=>{stopStroke();setPower(false);selectTool('round');tiltLocked=true;yawLocked=true;$('tilt').value=p.tilt;$('yaw').value=p.yaw;$('depth').value=p.depth;syncLocks();updateOutputs();updateInstrument({rotate:true});guideEnabled=true;coach.goTo(1);markDirty();toast('Углы и подача выставлены. Наведите бор на отмеченную точку и включите его для прохода.');};annotate(box);
 }
@@ -200,26 +204,26 @@ function updatePulpAdvice(){
  $('pulp-side').onclick=()=>{stopStroke();setPower(false);camera.position.set(19,6,20);controls.target.set(0,1,0);controls.update();};
  $('pulp-target').onclick=()=>{const plan=planEarlyExcavation(volume,.35,{beyondIntro:true});if(plan?.status!=='work'){toast(plan?.reason||'Сначала оцените подготовленную полость.');return;}stopStroke();setPower(false);selectTool('round');$('radius').value=.35;$('tilt').value=0;$('yaw').value=0;$('depth').value=plan.depth;tiltLocked=true;yawLocked=true;syncLocks();updateOutputs();pulpFocus=plan.point;guideEnabled=true;updateInstrument({rotate:true});coach.showTarget({title:'Проверьте доступную точку',text:'Отмечен открытый участок, доступный меньшей рабочей части на модели. Проверьте обзор и глубину; не углубляйтесь в область пульпы.',target:'pulp-safe'});markDirty();};annotate(box);
 }
-function updateStats(){if(!volume)return;statsCache=volume.stats();updateEarlyPractice();updatePulpAdvice();const s=statsCache;$('removed-volume').innerHTML=`${s.removedVolume.toFixed(1)} <small>мм³</small>`;$('healthy-volume').innerHTML=`${s.healthyVolume.toFixed(1)} <small>мм³</small>`;$('healthy-volume').classList.toggle('bad',s.healthyVolume>3||s.critical);
+function updateStats(){if(!volume)return;statsCache=volume.stats();updateEarlyPractice();updatePulpAdvice();const s=statsCache;$('removed-volume').innerHTML=`${s.removedVolume.toFixed(1).replace('.',',')} / ${(volume.initialCaries*meta.step**3).toFixed(1).replace('.',',')} <small>мм³</small>`;$('healthy-volume').innerHTML=`${s.healthyVolume.toFixed(1).replace('.',',')} <small>мм³</small>`;$('operative-telemetry').hidden=activeCaseId!==1;$('healthy-volume').classList.toggle('bad',s.healthyVolume>3||s.critical);
  if($('remaining-label'))$('remaining-label').textContent=mode==='exam'?'Скрыт':`${s.remainingPercent.toFixed(0)}%`;
  if($('remaining-bar'))$('remaining-bar').style.width=mode==='exam'?'0%':`${s.remainingPercent}%`;updateHint();
 }
 function markDirty(){dirty=true;clearTimeout(saveTimer);saveTimer=setTimeout(save,1100);}
-function extras(){return {stagesCollapsed,activeCaseId,stage,diagnosed,isolated,mode,tiltLocked,yawLocked,tilt:+$('tilt').value,yaw:+$('yaw').value,guideEnabled};}
+function extras(){return {activeCaseId,stage,diagnosed,isolated,mode,tiltLocked,yawLocked,tilt:+$('tilt').value,yaw:+$('yaw').value,guideEnabled};}
 function save(){if(!volume||!dirty)return;try{localStorage.setItem(STORAGE,JSON.stringify(volume.serialize(extras())));dirty=false;$('save-status').textContent='Прогресс сохранён на этом устройстве';}catch(e){$('save-status').textContent='Сохранение недоступно · экспортируйте файл';}}
-function applyExtras(extra){if(typeof extra.stagesCollapsed==='boolean')stagesCollapsed=extra.stagesCollapsed;syncStagePanel();activeCaseId=Number.isInteger(extra.activeCaseId)&&extra.activeCaseId>=1&&extra.activeCaseId<=CASES.length?extra.activeCaseId:1;tiltLocked=extra.tiltLocked===true;yawLocked=extra.yawLocked===true;guideEnabled=extra.guideEnabled!==false;$('tilt').value=Number.isFinite(extra.tilt)?Math.max(-180,Math.min(180,extra.tilt)):0;$('yaw').value=Number.isFinite(extra.yaw)?Math.max(-180,Math.min(180,extra.yaw)):0;syncLocks();lastAngles={tilt:+$('tilt').value,yaw:+$('yaw').value};stage=Number.isInteger(extra.stage)?Math.max(0,Math.min(4,extra.stage)):0;diagnosed=extra.diagnosed===true;isolated=extra.isolated===true;mode=extra.mode==='exam'?'exam':'learn';$('mode').value=mode;applyMode();renderStage();updateIsolation();}
+function applyExtras(extra){syncStagePanel();activeCaseId=Number.isInteger(extra.activeCaseId)&&extra.activeCaseId>=1&&extra.activeCaseId<=CASES.length?extra.activeCaseId:1;tiltLocked=extra.tiltLocked===true;yawLocked=extra.yawLocked===true;guideEnabled=extra.guideEnabled!==false;$('tilt').value=Number.isFinite(extra.tilt)?Math.max(-180,Math.min(180,extra.tilt)):0;$('yaw').value=Number.isFinite(extra.yaw)?Math.max(-180,Math.min(180,extra.yaw)):0;syncLocks();lastAngles={tilt:+$('tilt').value,yaw:+$('yaw').value};stage=Number.isInteger(extra.stage)?Math.max(0,Math.min(4,extra.stage)):0;diagnosed=extra.diagnosed===true;isolated=extra.isolated===true;mode=extra.mode==='exam'?'exam':'learn';$('mode').value=mode;applyMode();renderStage();updateIsolation();}
 function download(value,filename){const url=URL.createObjectURL(new Blob([JSON.stringify(value,null,2)],{type:'application/json'}));const a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 function resetCase(){
- if(!volume)return;activeCaseId=1;toolPoseReady=false;surfaceContact=false;lastSurfaceEntry=null;pulpFocus=null;lastAngles={tilt:0,yaw:0};stopStroke();setPower(false);volume.reset();history=[];diagnosed=false;isolated=false;stage=0;showLesion=false;section=false;showRoots=true;cursor=null;pointerInside=false;
+ if(!volume)return;const fresh=trainingCase(originalMeta,originalBase);volume=fresh.volume;meta=volume.meta;refreshBaseline();activeCaseId=1;toolPoseReady=false;surfaceContact=false;lastSurfaceEntry=null;pulpFocus=null;lastAngles={tilt:0,yaw:0};stopStroke();setPower(false);volume.reset();history=[];diagnosed=false;isolated=false;stage=0;showLesion=false;section=false;showRoots=true;cursor=null;pointerInside=false;
  ['lesion-button','section-button'].forEach(id=>$(id).classList.remove('active'));$('roots-button').classList.add('active');$('roots-button').setAttribute('aria-pressed','true');$('undo-button').disabled=true;
  $('depth').value=0;$('tilt').value=0;$('yaw').value=0;$('radius').value=.65;$('cooling').checked=true;tiltLocked=false;yawLocked=false;guideEnabled=true;syncLocks();coach.reset();$('parameter-effect').hidden=true;lightTime=0;statsCache=null;
  selectTool('inspect');setView('tooth');renderStage();updateClip();updateIsolation();updateOutputs();requestMesh();updateStats();markDirty();save();$('modal').close();document.querySelector('.control-panel').scrollTop=0;toast('Случай начат сначала.');
 }
-function confirmRestart(){if(!volume)return;modal(`<h2>Начать сначала?</h2><p>Зуб вернётся к исходному состоянию. Текущую попытку можно сохранить в файл.</p><div class="modal-actions"><button id="backup-reset">Экспортировать попытку</button><button id="confirm-reset">Начать сначала</button></div>`);$('backup-reset').onclick=()=>download(volume.serialize(extras()),'dentalab-progress.json');$('confirm-reset').onclick=resetCase;}
+function confirmRestart(){if(!volume)return;modal(`<h2>Начать сначала?</h2><p>Откроется облегчённый случай: поражённых тканей на 50% меньше, поражение расположено ближе к поверхности. Текущую попытку можно сохранить в файл.</p><div class="modal-actions"><button id="backup-reset">Экспортировать попытку</button><button id="confirm-reset">Начать сначала</button></div>`);$('backup-reset').onclick=()=>download(volume.serialize(extras()),'dentalab-progress.json');$('confirm-reset').onclick=resetCase;}
 function dataPanel(){modal(`<span class="modal-eyebrow">ЛОКАЛЬНЫЕ ДАННЫЕ</span><h2>Ваше рабочее место</h2><p>Модель, действия и параметры сохраняются в браузере на этом устройстве. Серверной базы, аккаунтов и аналитики нет. Очистка данных браузера удалит сохранение.</p><div class="modal-actions"><button id="export-button">Экспорт прогресса</button><button id="restart-button">Начать случай заново</button></div><h3>Восстановить из файла</h3><p>Файл заменит текущее состояние этого учебного случая.</p><input id="import-file" class="file-input" type="file" accept="application/json,.json"><p id="import-status" role="status"></p><h3>Исходная модель</h3><p>Human mouth detailed — <a href="https://sketchfab.com/Mince" target="_blank" rel="noopener noreferrer">Mince</a>, <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener noreferrer">CC BY 4.0</a>. Зуб выделен, масштаб нормализован, добавлены реконструированные ткани и поражение.</p>`);
  $('export-button').onclick=()=>download(volume.serialize(extras()),'dentalab-progress.json');
  $('restart-button').onclick=confirmRestart;
- $('import-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>8_000_000)throw Error('Файл слишком большой.');const parsed=JSON.parse(await f.text());const extra=volume.restore(parsed);history=[];$('undo-button').disabled=true;applyExtras(extra);requestMesh();updateStats();markDirty();$('modal').close();toast('Прогресс восстановлен.');}catch(err){$('import-status').textContent=`Импорт отклонён: ${err.message}`;$('import-status').className='bad';}};
+ $('import-file').onchange=async e=>{const f=e.target.files[0];if(!f)return;try{if(f.size>8_000_000)throw Error('Файл слишком большой.');const parsed=JSON.parse(await f.text());const restored=trainingCase(originalMeta,originalBase,parsed);volume=restored.volume;meta=volume.meta;refreshBaseline();const extra=restored.extra;history=[];$('undo-button').disabled=true;applyExtras(extra);requestMesh();updateStats();markDirty();$('modal').close();toast('Прогресс восстановлен.');}catch(err){$('import-status').textContent=`Импорт отклонён: ${err.message}`;$('import-status').className='bad';}};
 }
 function applyMode(){const exam=mode==='exam';if(exam){section=false;showLesion=false;$('section-button').classList.remove('active');$('lesion-button').classList.remove('active');}updateClip();renderStage();}
 function report(){if(!volume)return;stopStroke();setPower(false);const s=volume.stats();let outcome=s.critical?'Обнаружено повреждение пульпы':s.caries===volume.initialCaries?'Работа с тканями ещё не выполнена':s.missing>0?'Дефект остаётся незаполненным':s.uncured>0?'Материал не полимеризован':s.caries>0?'Сохранён участок заданного поражения':'Учебная геометрическая задача выполнена';
@@ -252,8 +256,8 @@ function updateOutputs(){for(const [id,unit,mult] of [['depth',' мм',1],['tilt
 async function init(){
  bind();
  try{
-  const results=await Promise.all([fetch('./assets/tooth-volume.json?v=0.6.0').then(r=>{if(!r.ok)throw Error('Метаданные модели недоступны');return r.json();}),fetch('./assets/tooth-volume.bin?v=0.6.0').then(r=>{if(!r.ok)throw Error('Объёмная модель недоступна');return r.arrayBuffer();}),fetch('./assets/tooth-reference.json').then(r=>r.json())]);
-  meta=results[0];volume=new ToothVolume(meta,new Uint8Array(results[1]));
+  const results=await Promise.all([fetch('./assets/tooth-volume.json?v=0.7.0').then(r=>{if(!r.ok)throw Error('Метаданные модели недоступны');return r.json();}),fetch('./assets/tooth-volume.bin?v=0.7.0').then(r=>{if(!r.ok)throw Error('Объёмная модель недоступна');return r.arrayBuffer();}),fetch('./assets/tooth-reference.json').then(r=>r.json())]);
+  originalMeta=results[0];originalBase=new Uint8Array(results[1]);const initial=trainingCase(originalMeta,originalBase);volume=initial.volume;meta=volume.meta;
   renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});renderer.setPixelRatio(Math.min(window.devicePixelRatio,2));renderer.setClearColor(0x000000,0);renderer.localClippingEnabled=true;renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=.9;
   $('viewport').appendChild(renderer.domElement);renderer.domElement.setAttribute('aria-label','Трёхмерная модель рабочего зуба. Вращение правой кнопкой мыши.');renderer.domElement.setAttribute('role','img');
   renderer.domElement.addEventListener('webglcontextlost',e=>{e.preventDefault();stopStroke();setPower(false);toast('Графический контекст потерян. Прогресс сохранён; обновите страницу.',true);save();});
@@ -270,11 +274,11 @@ async function init(){
   const seal=new THREE.CatmullRomCurve3(contour.map(p=>new THREE.Vector3(...p)),true);cuff.add(new THREE.Mesh(new THREE.TubeGeometry(seal,segments,.065,8,true),new THREE.MeshStandardMaterial({color:0x537e68,roughness:.65})));cuff.visible=false;scene.add(cuff);
   toolGroup=new THREE.Group();head=new THREE.Mesh(new THREE.SphereGeometry(.65,20,14),new THREE.MeshStandardMaterial({color:0x9ba6a3,metalness:.75,roughness:.3}));toolGroup.add(head);shaft=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,5,16),new THREE.MeshStandardMaterial({color:0xc6d0c9,metalness:.8,roughness:.26}));shaft.position.y=3.2;toolGroup.add(shaft);
   const handle=new THREE.Mesh(new THREE.CylinderGeometry(.8,.45,5,24),new THREE.MeshStandardMaterial({color:0x75958d,metalness:.65,roughness:.32}));handle.position.y=7.9;handle.rotation.z=.08;toolGroup.add(handle);const grip=new THREE.Mesh(new THREE.BoxGeometry(.16,2.4,.25),new THREE.MeshStandardMaterial({color:0x244d45,roughness:.5}));grip.position.set(.65,8,.15);toolGroup.add(grip);const shaftMark=new THREE.Mesh(new THREE.BoxGeometry(.13,1.2,.18),new THREE.MeshStandardMaterial({color:0x245e4a,roughness:.4}));shaftMark.position.set(.18,2.5,0);toolGroup.add(shaftMark);toolGroup.visible=false;scene.add(toolGroup);
-  worker=new Worker(new URL('./mesh-worker.js?v=0.6.0',import.meta.url),{type:'module'});worker.onmessage=({data:{mesh}})=>{tooth.geometry.dispose();tooth.geometry=geometry(mesh);if(mouthWork){mouthWork.geometry.dispose();mouthWork.geometry=tooth.geometry.clone();}busy=false;if(pending){pending=false;requestMesh();}};worker.onerror=e=>{busy=false;toast('Не удалось обновить геометрию. Перезагрузите страницу; прогресс сохранён.',true);console.error(e);};
+  worker=new Worker(new URL('./mesh-worker.js?v=0.7.0',import.meta.url),{type:'module'});worker.onmessage=({data:{mesh}})=>{tooth.geometry.dispose();tooth.geometry=geometry(mesh);if(mouthWork){mouthWork.geometry.dispose();mouthWork.geometry=tooth.geometry.clone();}busy=false;if(pending){pending=false;requestMesh();}};worker.onerror=e=>{busy=false;toast('Не удалось обновить геометрию. Перезагрузите страницу; прогресс сохранён.',true);console.error(e);};
   renderer.domElement.addEventListener('pointermove',movePointer);renderer.domElement.addEventListener('pointerdown',beginStroke);renderer.domElement.addEventListener('pointerleave',centerInstrument);renderer.domElement.addEventListener('pointercancel',stopStroke);renderer.domElement.addEventListener('lostpointercapture',()=>{if(pressing)stopStroke();});renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
   renderer.domElement.addEventListener('wheel',e=>{if(e.shiftKey&&view==='tooth'){e.preventDefault();e.stopImmediatePropagation();$('depth').value=+$('depth').value+(e.deltaY>0?.1:-.1);updateOutputs();updateInstrument();}},{passive:false,capture:true});
   const resize=()=>{const r=$('viewport').getBoundingClientRect();renderer.setSize(r.width,r.height);camera.aspect=r.width/r.height;camera.updateProjectionMatrix();};new ResizeObserver(resize).observe($('viewport'));resize();
-  try{const saved=localStorage.getItem(STORAGE);if(saved){const extra=volume.restore(JSON.parse(saved));applyExtras(extra);requestMesh();toast('Продолжена сохранённая попытка.');}}catch(e){toast('Сохранение не прочитано. Доступен новый случай; исходный файл не изменён.',true);}
+  try{const saved=localStorage.getItem(STORAGE);if(saved){const restored=trainingCase(originalMeta,originalBase,JSON.parse(saved));volume=restored.volume;meta=volume.meta;refreshBaseline();applyExtras(restored.extra);requestMesh();toast('Продолжена сохранённая попытка.');}}catch(e){toast('Сохранение не прочитано. Доступен новый случай; исходный файл не изменён.',true);}
   resetCamera();updateClip();renderStage();updateStats();updateOutputs();$('loading').hidden=true;isReady=true;if(activeCaseId!==1)setView('mouth');
   let lastWork=0;function frame(now){requestAnimationFrame(frame);controls.update();if(!pointerInside&&tool!=='inspect'&&view==='tooth')updateInstrument({quiet:true});if(now-lastWork>75){const dt=Math.min(.15,(now-lastWork)/1000);lastWork=now;work(dt);}if(now-lastStats>600){lastStats=now;updateStats();}renderer.render(scene,camera);coach.update();}requestAnimationFrame(frame);
   if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});

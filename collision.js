@@ -14,12 +14,13 @@ export function toolCollisionScore(volume,point,tilt,yaw,{tool='round',radius=.6
 }
 const wrap=d=>((d+180)%360+360)%360-180;
 export function constrainToolAngles(volume,point,previous,desired,options={}){
+ previous={...previous, ...(options.tiltLocked?{tilt:desired.tilt}:{}), ...(options.yawLocked?{yaw:desired.yaw}:{})};
  const dx=wrap(desired.tilt-previous.tilt),dy=wrap(desired.yaw-previous.yaw),n=Math.max(1,Math.ceil(Math.max(Math.abs(dx),Math.abs(dy))/2));
  const anchor=a=>options.positionForAngles?options.positionForAngles(a):point;let accepted={...previous},baseline=toolCollisionScore(volume,anchor(previous),previous.tilt,previous.yaw,options);
  for(let i=1;i<=n;i++){const next=i===n?{...desired}:{tilt:wrap(previous.tilt+dx*i/n),yaw:wrap(previous.yaw+dy*i/n)};const score=toolCollisionScore(volume,anchor(next),next.tilt,next.yaw,options);
   if(score>0&&(baseline===0||score>baseline))return {...accepted,blocked:true};accepted=next;baseline=score;
  }
- return {...accepted,blocked:false};
+ return {...accepted,blocked:!!((options.tiltLocked||options.yawLocked)&&baseline>0)};
 }
 export function pulpClearance(volume,point,radius=.65,axis=[0,-1,0],headLength=0){
  if(!point)return Infinity;

@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#142c32">
 <title>KitDentaLab — стоматологический тренажёр</title>
-<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.6.0">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.7.0">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body>
@@ -31,6 +31,7 @@
 <aside id="case-coach" class="case-coach" hidden><div class="coach-top"><span>СЛУЧАЙ 01 · ПОДСКАЗКА</span><button id="coach-dismiss" aria-label="Скрыть подсказки">×</button></div><h3 id="coach-title"></h3><p id="coach-copy"></p><div class="coach-nav"><button id="coach-prev">Назад</button><span id="coach-progress"></span><button id="coach-next">Далее</button></div></aside>
 <div id="hover-info" class="hover-info">Наведите инструмент на зуб</div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
+<div class="telemetry operative-telemetry" id="operative-telemetry" aria-label="Удалённые ткани"><div><span>Поражённые ткани удалены</span><strong id="removed-volume">0,0 / … <small>мм³</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0,0 <small>мм³</small></strong></div></div>
 <div class="scene-bottom"><span><span class="key-icon">ПКМ</span> вращать <span class="key-icon">Колесо</span> масштаб <span class="key-icon">ЛКМ</span> работать</span><button id="undo-button" disabled>Отменить действие <kbd>⌘Z</kbd></button></div>
 <div class="tool-dock" id="tool-dock" aria-label="Инструменты">
 <button data-tool="inspect" class="active"><span class="tool-illustration probe"></span><span>Осмотр</span><kbd>1</kbd></button>
@@ -56,7 +57,7 @@
 <div class="parameter"><label for="radius">Диаметр рабочей части <output id="radius-value">1.3 мм</output></label><input id="radius" type="range" min="0.35" max="1.1" value="0.65" step="0.05"></div>
 <label class="switch-row" for="cooling"><span>Водяное охлаждение</span><input id="cooling" type="checkbox" checked role="switch"></label>
 <p id="parameter-effect" class="parameter-effect" role="status" hidden></p>
-<div class="telemetry"><div><span>Поражённые ткани удалены</span><strong id="removed-volume">0.0 <small>мм³</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0.0 <small>мм³</small></strong></div></div>
+
 <div class="mentor" id="mentor"><div class="mentor-heading"><span>✦</span>Клиническая подсказка</div><p id="hint-text">Начните с обследования. Метод лечения выбирают после оценки состояния зуба и пульпы.</p><button id="hint-source" class="text-button">Обоснование и источник</button></div>
 <button id="finish-button" class="primary-button">Разбор результата</button>
 <div id="save-status" class="save-status" role="status">Сохранение локально · без аккаунта</div>
@@ -64,5 +65,5 @@
 </main>
 <footer class="creator-footer"><div id="creator-credit">Создатель — <strong>Екатерина Дроздова</strong></div><nav id="creator-contacts" aria-label="Контакты создателя"><a href="https://t.me/kit_2195" target="_blank" rel="noopener noreferrer">Telegram</a><a href="mailto:dr.kate95@gmail.com">Эл. почта</a><a href="https://vk.ru/id37568722" target="_blank" rel="noopener noreferrer">ВКонтакте</a></nav></footer>
 <dialog id="modal"><button id="modal-close" class="modal-close" aria-label="Закрыть">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="app.js?v=0.6.0"></script>
+<script type="module" src="app.js?v=0.7.0"></script>
 </body></html>

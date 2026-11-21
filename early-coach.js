@@ -1,7 +1,7 @@
 // Recommendations are computed from this virtual tooth, not clinical angle/depth norms.
 export function planEarlyExcavation(volume,radius=.65,{beyondIntro=false}={}){
- const stats=volume.stats();
- if(!beyondIntro&&stats.removedVolume>=10)return null;
+ const stats=volume.stats(),goal=Math.min(10,volume.initialCaries*volume.meta.step**3);
+ if(!beyondIntro&&stats.removedVolume>=goal)return null;
  if(stats.critical)return {status:'stop',title:'Остановите обработку',reason:'Обнаружен контакт с пульпой. Не увеличивайте подачу; откройте разбор результата.'};
  const {size:[nx,ny,nz],origin,step,lesionCenter}=volume.meta,data=volume.data,base=volume.base;
  let best=null;const clearance=radius+.25,cells=Math.ceil(clearance/step);
@@ -24,8 +24,8 @@ export function planEarlyExcavation(volume,radius=.65,{beyondIntro=false}={}){
   const score=caries-healthy*4-Math.hypot(point[0]-lesionCenter[0],point[2]-lesionCenter[2])*.05;
   if(!best||score>best.score)best={score,point,depth,caries,healthy};
  }
- if(!best)return {status:'inspect',title:'Сначала осмотрите полость',reason:'Видимая поверхность не даёт точки для дальнейшего прохода с запасом до пульпы. Не углубляйтесь ради достижения 10 мм³: измените обзор и оцените границу обработки.'};
- return {status:'work',title:'Первые 10 мм³ · короткие проходы',point:best.point,depth:best.depth,tilt:0,yaw:0,increment:.1,removed:stats.removedVolume,reason:best.healthy?'Работайте у отмеченной точки коротко: рядом находятся непоражённые ткани.':'Сначала обработайте отмеченный открытый участок поражения.'};
+ if(!best)return {status:'inspect',title:'Сначала осмотрите полость',reason:'Видимая поверхность не даёт точки для дальнейшего прохода с запасом до пульпы. Не углубляйтесь ради счётчика: измените обзор и оцените границу обработки.'};
+ return {status:'work',title:goal<10?'Первое препарирование · короткие проходы':'Первые 10 мм³ · короткие проходы',goal,point:best.point,depth:best.depth,tilt:0,yaw:0,increment:.1,removed:stats.removedVolume,reason:best.healthy?'Работайте у отмеченной точки коротко: рядом находятся непоражённые ткани.':'Сначала обработайте отмеченный открытый участок поражения.'};
 }
 export function earlyGuideSteps(plan){
  if(!plan)return null;
