@@ -1,4 +1,4 @@
-import {planEarlyExcavation} from './early-coach.js?v=0.10.0';
+import {planEarlyExcavation} from './early-coach.js?v=0.11.0';
 export class AttemptCoach{
  constructor(){this.failures=0;this.streak=0;this.hints=0;}
  record(progress){if(progress){this.streak=0;return false;}this.failures++;this.streak++;if((this.hints===0&&this.failures>=5)||(this.hints>0&&this.streak>=2)){this.hints++;this.streak=0;return true;}return false;}

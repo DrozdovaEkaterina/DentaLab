@@ -1,5 +1,5 @@
-import {GUIDE_STEPS} from './learning-ui.js?v=0.10.0';
-import {earlyGuideSteps} from './early-coach.js?v=0.10.0';
+import {GUIDE_STEPS} from './learning-ui.js?v=0.11.0';
+import {earlyGuideSteps} from './early-coach.js?v=0.11.0';
 export function installCoach({state,locate,annotate,onToggle}){
  const card=document.getElementById('case-coach'),toggle=document.getElementById('guide-toggle');
  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.id='guide-lines';svg.setAttribute('aria-hidden','true');svg.innerHTML='<defs><marker id="coach-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1 11 6 1 11" fill="none" stroke="#2d8069" stroke-width="2"/></marker></defs><path id="guide-path" marker-end="url(#coach-arrow)"/><circle id="guide-point" r="7"/>';svg.style.display='none';document.body.appendChild(svg);
@@ -13,7 +13,7 @@ export function installCoach({state,locate,annotate,onToggle}){
  toggle.onclick=()=>onToggle(!state().enabled);
  function update(){const s=state();if(s.stage!==previousStage||s.critical!==previousCritical||!!s.early!==previousEarly){previousEarly=!!s.early;manualStep=null;previousStage=s.stage;previousCritical=s.critical;index=0;clear();render();}
   const earlyText=JSON.stringify(s.early);if(earlyText!==previousEarlyText){previousEarlyText=earlyText;index=Math.min(index,steps().length-1);render();}
-  const visible=s.ready&&s.enabled&&s.mode==='learn'&&s.view==='tooth'&&!document.querySelector('dialog[open]')&&!['tilt','yaw'].includes(document.activeElement?.id);card.hidden=!visible;svg.style.display=visible?'':'none';toggle.setAttribute('aria-pressed',String(s.enabled&&s.mode==='learn'));toggle.classList.toggle('active',s.enabled&&s.mode==='learn');if(!visible){clear();return;}
+  const visible=!!manualStep&&!s.critical&&!card.closest('.control-panel')?.hidden&&s.ready&&s.enabled&&s.mode==='learn'&&s.view==='tooth'&&!document.querySelector('dialog[open]')&&!['tilt','yaw'].includes(document.activeElement?.id);card.hidden=!visible;svg.style.display=visible?'':'none';toggle.setAttribute('aria-pressed',String(s.enabled&&s.mode==='learn'));toggle.classList.toggle('active',s.enabled&&s.mode==='learn');if(!visible){clear();return;}
   const step=current();if(!step)return;let target;
   if(step.target.startsWith('#')||step.target.startsWith('[')){const el=document.querySelector(step.target);if(el!==lastTarget){clear();lastTarget=el;el?.classList.add('guide-target');}if(el){const r=el.getBoundingClientRect();target={x:r.left+r.width/2,y:r.top+r.height/2,visible:r.top>=0&&r.bottom<=innerHeight};}}
   else{clear();target=locate(step.target);}

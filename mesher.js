@@ -1,4 +1,4 @@
-import {COLORS} from './volume.js?v=0.10.0';
+import {COLORS} from './volume.js?v=0.11.0';
 // Surface nets: one averaged intersection per boundary cell, then shared quads.
 // The source is a volume; all tool edits regenerate its actual boundary.
 export function surfaceNets(data,meta,only=0){
