@@ -1,0 +1,5 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {fedPoint,raisedView,shortcutLabel} from '../operative-motion.js';
+test('mouse translation within a plane keeps approach depth constant',()=>{const normal=[.6,0,.8],a=[0,4,0],b=[8,3,-6],depth=1.7;const dot=p=>p.reduce((s,v,i)=>s+v*normal[i],0);assert.ok(Math.abs(dot(fedPoint(a,normal,depth))-dot(fedPoint(b,normal,depth)))<1e-9);});
+test('feed moves the displayed working point even without mouse contact',()=>{assert.deepEqual(fedPoint([0,4,0],[0,-1,0],0),[0,4,0]);assert.deepEqual(fedPoint([0,4,0],[0,-1,0],2),[0,2,0]);});
+test('raising view keeps target and viewing distance fixed',()=>{const p=[22,27,32],target=[0,2.2,0],before=[...target],q=raisedView(p,target,.1);assert.deepEqual(target,before);assert.ok(q[1]>p[1]);const distance=a=>Math.hypot(...a.map((v,i)=>v-target[i]));assert.ok(Math.abs(distance(q)-distance(p))<1e-9);assert.ok(Math.abs(q[0]/q[2]-p[0]/p[2])<1e-9);});
+test('undo label follows the operating system',()=>{assert.equal(shortcutLabel('MacIntel'),'⌘Z');assert.equal(shortcutLabel('Windows'),'Ctrl+Z');assert.equal(shortcutLabel('Linux x86_64'),'Ctrl+Z');});

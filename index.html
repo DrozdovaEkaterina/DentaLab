@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#142c32">
 <title>KitDentaLab — стоматологический тренажёр</title>
-<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.8.0">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.9.0">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body>
@@ -31,8 +31,8 @@
 <aside id="case-coach" class="case-coach" hidden><div class="coach-top"><span>СЛУЧАЙ 01 · ПОДСКАЗКА</span><button id="coach-dismiss" aria-label="Скрыть подсказки">×</button></div><h3 id="coach-title"></h3><p id="coach-copy"></p><div class="coach-nav"><button id="coach-prev">Назад</button><span id="coach-progress"></span><button id="coach-next">Далее</button></div></aside>
 <div id="hover-info" class="hover-info">Наведите инструмент на зуб</div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-<div class="telemetry operative-telemetry" id="operative-telemetry" aria-label="Удалённые ткани"><div><span>Поражённые ткани удалены</span><strong id="removed-volume">0,0 / … <small>мм³</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0,0 <small>мм³</small></strong></div><div id="operative-prep-status" class="operative-prep-status" hidden></div></div>
-<div class="scene-bottom"><div class="operative-help"><span><kbd>ПКМ</kbd> Вращать</span><span><kbd>Колесо</kbd> Масштаб</span><span><kbd>ЛКМ</kbd> Работать</span></div><button id="undo-button" disabled>Отменить <kbd>⌘Z</kbd></button></div>
+<div class="telemetry operative-telemetry" id="operative-telemetry" aria-label="Удалённые ткани"><div><span>Поражённые ткани удалены</span><strong id="removed-volume">0,0 / … <small>мм³</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0,0 <small>мм³</small></strong></div><button id="undo-button" disabled aria-label="Отменить последнее действие">Отмена <kbd>Ctrl+Z</kbd></button><div id="operative-prep-status" class="operative-prep-status" hidden></div></div>
+<section id="attempt-failure" class="attempt-failure" role="alert" hidden><strong>Попытка провалена</strong><p>Обнаружено повреждение или вскрытие пульпы. Продолжение этой учебной попытки заблокировано.</p><div><button id="restart-stage">Начать этап заново</button><button id="failure-report">Разбор результата</button></div><small id="restart-stage-note"></small></section>
 <div class="tool-dock" id="tool-dock" aria-label="Инструменты">
 <button data-tool="inspect" class="active"><span class="tool-illustration probe"></span><span>Осмотр</span><kbd>1</kbd></button>
 <button data-tool="round"><span class="tool-illustration round"></span><span>Шаровидный бор</span><kbd>2</kbd></button>
@@ -66,5 +66,5 @@
 </main>
 <footer class="creator-footer"><div id="creator-credit">Создатель — <strong>Екатерина Дроздова</strong></div><nav id="creator-contacts" aria-label="Контакты создателя"><a href="https://t.me/kit_2195" target="_blank" rel="noopener noreferrer">Telegram</a><a href="mailto:dr.kate95@gmail.com">Эл. почта</a><a href="https://vk.ru/id37568722" target="_blank" rel="noopener noreferrer">ВКонтакте</a></nav></footer>
 <dialog id="modal"><button id="modal-close" class="modal-close" aria-label="Закрыть">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="app.js?v=0.8.0"></script>
+<script type="module" src="app.js?v=0.9.0"></script>
 </body></html>

@@ -1,0 +1,3 @@
+export function fedPoint(anchor,direction,depth){return anchor.map((v,i)=>v+direction[i]*depth);}
+export function raisedView(position,target,amount){const offset=position.map((v,i)=>v-target[i]),radius=Math.hypot(...offset),horizontal=Math.hypot(offset[0],offset[2]),azimuth=Math.atan2(offset[0],offset[2]);const elevation=Math.max(-Math.PI*.46,Math.min(Math.PI*.46,Math.atan2(offset[1],horizontal)+amount));return [target[0]+radius*Math.cos(elevation)*Math.sin(azimuth),target[1]+radius*Math.sin(elevation),target[2]+radius*Math.cos(elevation)*Math.cos(azimuth)];}
+export function shortcutLabel(platform){return /mac|iphone|ipad/i.test(platform)?'⌘Z':'Ctrl+Z';}
