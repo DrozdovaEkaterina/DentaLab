@@ -3,13 +3,13 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#142c32">
 <title>KitDentaLab — стоматологический тренажёр</title>
-<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.7.0">
+<link rel="icon" href="assets/icon.svg" type="image/svg+xml"><link rel="stylesheet" href="style.css?v=0.8.0">
 <script type="importmap">{"imports":{"three":"./vendor/three.module.js"}}</script>
 </head>
 <body>
 <header class="topbar"><a class="brand" href="./" aria-label="KitDentaLab, главная"><svg viewBox="0 0 32 36" aria-hidden="true"><path d="M16 7C8-1 1 6 4 16c2 6 2 15 6 16 4 0 2-11 6-11s2 11 6 11c4-1 4-10 6-16C31 6 24-1 16 7Z" fill="none" stroke="currentColor" stroke-width="2.3"/></svg><span>KitDenta<span class="brand-light">Lab</span><small>СТОМАТОЛОГИЧЕСКИЙ ТРЕНАЖЁР</small></span></a><nav class="topnav"><button id="cases-button">Клинические случаи</button><button id="sources-button">База знаний</button><button id="help-button">Управление <kbd>?</kbd></button></nav><div class="local-label"><span></span>Прогресс на этом устройстве</div><button id="data-button" class="avatar" aria-label="Сохранения и экспорт">Л</button></header>
 <main class="workspace">
-<aside class="case-panel"><button id="stage-panel-toggle" class="stage-panel-toggle" aria-expanded="true" aria-controls="stage-panel-content" title="Свернуть этапы"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M9 4v16" stroke="currentColor" stroke-width="1.5"/></svg><span>Свернуть этапы</span></button><div id="stage-panel-content" class="case-panel-content">
+<aside class="case-panel"><div id="stage-panel-content" class="case-panel-content">
 <div class="eyebrow">ТЕРАПЕВТИЧЕСКАЯ СТОМАТОЛОГИЯ</div><h1>Сохранить зуб</h1><p class="case-subtitle">Кариес жевательной поверхности</p>
 <div class="case-meta"><span>Случай 01</span><span>Постоянный моляр</span></div>
 <label class="mode-label" for="mode">Режим прохождения</label><select id="mode"><option value="learn">Обучение с подсказками</option><option value="exam">Самостоятельная практика</option></select>
@@ -24,15 +24,15 @@
 <button id="start-over" class="restart-button">Начать сначала</button>
 </div></aside>
 <section class="simulation" aria-label="Рабочая область 3D-тренажёра">
+<button id="left-panel-handle" class="panel-handle left-handle" aria-label="Скрыть левую панель" aria-expanded="true" aria-controls="stage-panel-content">‹</button><button id="right-panel-handle" class="panel-handle right-handle" aria-label="Скрыть правую панель" aria-expanded="true" aria-controls="right-panel-content">›</button>
 <div class="scene-top"><div class="segmented" id="view-buttons"><button data-view="tooth" class="selected">Рабочий зуб</button><button data-view="mouth">Полость рта</button></div><div class="scene-badges"><button id="guide-toggle" aria-pressed="true">Подсказки</button></div></div>
 <div id="viewport"><div id="loading"><span class="loader"></span>Подготавливаем рабочий зуб…</div><div id="webgl-error" hidden><h2>Не удалось запустить 3D</h2><p>Нужен браузер с включённым WebGL 2 и аппаратным ускорением.</p></div></div>
-<div class="scene-label"><span class="crosshair">⌖</span><div id="scene-title">Коронка и корни моляра<small id="scene-description">Моляр, выделенный из исходной модели</small></div></div>
 <div class="view-toolbar"><button id="reset-view" title="Вернуть камеру" aria-label="Вернуть камеру">⌖</button><div class="camera-height-controls"><button id="camera-up" title="Поднять камеру · R" aria-label="Поднять камеру">Выше</button><button id="camera-down" title="Опустить камеру · F" aria-label="Опустить камеру">Ниже</button></div><button id="top-view" title="Вид сверху" aria-label="Вид сверху">⊤</button><button id="section-button" title="Учебный разрез">Разрез</button><button id="lesion-button" title="Показать объём поражения">Поражение</button><button id="roots-button" class="active" aria-pressed="true" title="Показать или скрыть корни">Корни</button></div>
 <aside id="case-coach" class="case-coach" hidden><div class="coach-top"><span>СЛУЧАЙ 01 · ПОДСКАЗКА</span><button id="coach-dismiss" aria-label="Скрыть подсказки">×</button></div><h3 id="coach-title"></h3><p id="coach-copy"></p><div class="coach-nav"><button id="coach-prev">Назад</button><span id="coach-progress"></span><button id="coach-next">Далее</button></div></aside>
 <div id="hover-info" class="hover-info">Наведите инструмент на зуб</div>
 <div id="toast" role="status" aria-live="polite" hidden></div>
-<div class="telemetry operative-telemetry" id="operative-telemetry" aria-label="Удалённые ткани"><div><span>Поражённые ткани удалены</span><strong id="removed-volume">0,0 / … <small>мм³</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0,0 <small>мм³</small></strong></div></div>
-<div class="scene-bottom"><span><span class="key-icon">ПКМ</span> вращать <span class="key-icon">Колесо</span> масштаб <span class="key-icon">ЛКМ</span> работать</span><button id="undo-button" disabled>Отменить действие <kbd>⌘Z</kbd></button></div>
+<div class="telemetry operative-telemetry" id="operative-telemetry" aria-label="Удалённые ткани"><div><span>Поражённые ткани удалены</span><strong id="removed-volume">0,0 / … <small>мм³</small></strong></div><div><span>Здоровые ткани удалены</span><strong id="healthy-volume">0,0 <small>мм³</small></strong></div><div id="operative-prep-status" class="operative-prep-status" hidden></div></div>
+<div class="scene-bottom"><div class="operative-help"><span><kbd>ПКМ</kbd> Вращать</span><span><kbd>Колесо</kbd> Масштаб</span><span><kbd>ЛКМ</kbd> Работать</span></div><button id="undo-button" disabled>Отменить <kbd>⌘Z</kbd></button></div>
 <div class="tool-dock" id="tool-dock" aria-label="Инструменты">
 <button data-tool="inspect" class="active"><span class="tool-illustration probe"></span><span>Осмотр</span><kbd>1</kbd></button>
 <button data-tool="round"><span class="tool-illustration round"></span><span>Шаровидный бор</span><kbd>2</kbd></button>
@@ -42,11 +42,12 @@
 <button data-tool="polish"><span class="tool-illustration polish"></span><span>Финирование</span><kbd>6</kbd></button>
 </div>
 </section>
-<aside class="control-panel"><section id="case-preview-details" hidden></section>
+<aside class="control-panel" id="right-panel-content"><section id="case-preview-details" hidden></section>
 <div class="patient-card"><div class="patient-heading"><span class="patient-icon">+</span><span>Виртуальный пациент<small>Взрослый · учебный случай</small></span></div><p>Кратковременная чувствительность от сладкого и холодного. Самопроизвольную боль отрицает.</p><button id="patient-button" class="text-button">Открыть карту случая</button></div>
 
 <div class="section-heading">Текущий этап <span class="pill" id="current-number">01</span></div><h2 id="stage-title">Обследование</h2><p id="stage-description" class="muted">Изучите карту пациента и выберите план лечения.</p>
 <div id="stage-content"></div>
+<section id="prep-status" class="prep-status" role="status" hidden></section>
 <section id="early-practice" class="early-practice" hidden></section><section id="pulp-advice" class="pulp-advice" hidden></section>
 <div class="divider"></div><div class="section-heading">Параметры инструмента</div>
 <div class="tool-name"><span id="tool-name">Зеркало / осмотр</span><span id="power-status">Неактивен</span></div>
@@ -65,5 +66,5 @@
 </main>
 <footer class="creator-footer"><div id="creator-credit">Создатель — <strong>Екатерина Дроздова</strong></div><nav id="creator-contacts" aria-label="Контакты создателя"><a href="https://t.me/kit_2195" target="_blank" rel="noopener noreferrer">Telegram</a><a href="mailto:dr.kate95@gmail.com">Эл. почта</a><a href="https://vk.ru/id37568722" target="_blank" rel="noopener noreferrer">ВКонтакте</a></nav></footer>
 <dialog id="modal"><button id="modal-close" class="modal-close" aria-label="Закрыть">×</button><div id="modal-content"></div></dialog>
-<script type="module" src="app.js?v=0.7.0"></script>
+<script type="module" src="app.js?v=0.8.0"></script>
 </body></html>

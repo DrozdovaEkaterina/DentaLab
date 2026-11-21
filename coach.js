@@ -1,5 +1,5 @@
-import {GUIDE_STEPS} from './learning-ui.js?v=0.7.0';
-import {earlyGuideSteps} from './early-coach.js?v=0.7.0';
+import {GUIDE_STEPS} from './learning-ui.js?v=0.8.0';
+import {earlyGuideSteps} from './early-coach.js?v=0.8.0';
 export function installCoach({state,locate,annotate,onToggle}){
  const card=document.getElementById('case-coach'),toggle=document.getElementById('guide-toggle');
  const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');svg.id='guide-lines';svg.setAttribute('aria-hidden','true');svg.innerHTML='<defs><marker id="coach-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse"><path d="M1 1 11 6 1 11" fill="none" stroke="#2d8069" stroke-width="2"/></marker></defs><path id="guide-path" marker-end="url(#coach-arrow)"/><circle id="guide-point" r="7"/>';svg.style.display='none';document.body.appendChild(svg);
